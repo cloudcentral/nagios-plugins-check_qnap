@@ -3,12 +3,12 @@
 ############################# Created and written by Matthias Luettermann ###############
 ############################# finetuning by primator@gmail.com
 ############################# finetuning by n.bandini@gmail.com
-############################# with code by Tom Lesniak and Hugo Geijteman 
+############################# with code by Tom Lesniak and Hugo Geijteman
 #
 #	copyright (c) 2008 Shahid Iqbal
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; 
+# the Free Software Foundation;
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -51,11 +51,11 @@ strWarning=$4
 strCritical=$5
 
 # Check if QNAP is online
-TEST=$(snmpstatus -v2c $strHostname -c "$strCommunity" -t 5 -r 0 2>&1) 
-# echo "Test: $TEST"; 
-if [ "$TEST" == "Timeout: No Response from $strHostname" ]; then 
-echo "CRITICAL: SNMP to $strHostname is not available or wrong community string"; 
-exit 2; 
+TEST=$(snmpstatus -v2c $strHostname -c "$strCommunity" -t 5 -r 0 2>&1)
+# echo "Test: $TEST";
+if [ "$TEST" == "Timeout: No Response from $strHostname" ]; then
+echo "CRITICAL: SNMP to $strHostname is not available or wrong community string";
+exit 2;
 fi
 
 # DISKUSED ---------------------------------------------------------------------------------------------------------------------------------------
@@ -64,12 +64,12 @@ if [ "$strpart" == "diskused" ]; then
 	free=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
 	UNITtest=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
 	UNITtest2=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
-        #echo $disk - $free - $UNITtest - $UNITtest2 
+        #echo $disk - $free - $UNITtest - $UNITtest2
 
 	if [ "$UNITtest" == "TB" ]; then
 	 factor=$(echo "scale=0; 1000" | bc -l)
 	elif [ "$UNITtest" == "GB" ]; then
-	 factor=$(echo "scale=0; 100" | bc -l)	 
+	 factor=$(echo "scale=0; 100" | bc -l)
 	else
 	 factor=$(echo "scale=0; 1" | bc -l)
 	fi
@@ -81,26 +81,26 @@ if [ "$strpart" == "diskused" ]; then
 	else
 	 factor2=$(echo "scale=0; 1" | bc -l)
 	fi
-	
+
 	#echo $factor - $factor2
 	disk=$(echo "scale=0; $disk*$factor" | bc -l)
 	free=$(echo "scale=0; $free*$factor2" | bc -l)
-	
-	#debug used=$(echo "scale=0; 9000*1000" | bc -l) 
+
+	#debug used=$(echo "scale=0; 9000*1000" | bc -l)
 	used=$(echo "scale=0; $disk-$free" | bc -l)
-	
+
 	#echo $disk - $free - $used
 	PERC=$(echo "scale=0; $used*100/$disk" | bc -l)
-	
+
 	diskF=$(echo "scale=0; $disk/$factor" | bc -l)
 	freeF=$(echo "scale=0; $free/$factor" | bc -l)
 	usedF=$(echo "scale=0; $used/$factor" | bc -l)
 
 	#wdisk=$(echo "scale=0; $strWarning*$disk/100" | bc -l)
 	#cdisk=$(echo "scale=0; $strCritical*$disk/100" | bc -l)
-	
+
         OUTPUT="Total:"$diskF"$UNITtest - Used:"$usedF"$UNITtest - Free:"$freeF"$UNITtest2 - Used Space: $PERC%|Used=$PERC;$strWarning;$strCritical;0;100"
-	
+
 	if [ $PERC -ge $strCritical ]; then
 		echo "CRITICAL: "$OUTPUT
 		exit 2
@@ -112,7 +112,7 @@ if [ "$strpart" == "diskused" ]; then
 		exit 0
 	fi
 
-	
+
 # CPU ----------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "cpu" ]; then
         CPU=$(snmpget -v2c -Ln -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.1.0 -Oqv | sed -E 's/"|\s%//g')
@@ -129,7 +129,7 @@ elif [ "$strpart" == "cpu" ]; then
                 echo "OK: "$OUTPUT
                 exit 0
         fi
-	
+
 # CPUTEMP ----------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "cputemp" ]; then
     	TEMP0=$(snmpget -v2c -c "$strCommunity" $strHostname  .1.3.6.1.4.1.24681.1.2.5.0 | awk '{print $4}' | cut -c2-3)
@@ -155,11 +155,11 @@ elif [ "$strpart" == "cputemp" ]; then
 elif [ "$strpart" == "freeram" ]; then
 	TOTALRAM=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.2.0 | awk '{print $4 $5}' | sed 's/.\(.*\)...../\1/')
 	FREERAM=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.3.0 | awk '{print $4 $5}' | sed 's/.\(.*\)...../\1/')
-	
+
 	let "USEDRAM=($TOTALRAM-$FREERAM)"
-	
+
 	let "RAMPERC=(100-($FREERAM*100)/$TOTALRAM)"
-	
+
 	OUTPUT="Total:"$TOTALRAM"MB - Used:"$USEDRAM"MB - Free:"$FREERAM"MB = "$RAMPERC"%|Memory usage="$RAMPERC"%;$strWarning;$strCritical;0;100"
 
 	if [ $RAMPERC -ge $strCritical ]; then
@@ -169,7 +169,7 @@ elif [ "$strpart" == "freeram" ]; then
 	elif [ $RAMPERC -ge $strWarning ]; then
 		echo "WARNING: "$OUTPUT
 		exit 1
-	
+
 	else echo "OK: "$OUTPUT
 		exit 0
 
@@ -449,7 +449,7 @@ elif [ "$strpart" == "vol5status" ]; then
                 echo "CRITICAL: "$Vol_Status
                 exit 2
         fi
-	
+
 # HD1 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd1status" ]; then
     	HD1=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.11.1.7.1 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
@@ -549,14 +549,14 @@ elif [ "$strpart" == "hdstatus" ]; then
         hdok=0
         hdnop=0
 	output_crit=""
-	
+
 	for (( c=1; c<=$hdnum; c++ ))
 	do
 	   HD=$(snmpget -v2c -c "$strCommunity" -mALL "$strHostname" 1.3.6.1.4.1.24681.1.2.11.1.7.$c | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-	   
+
 	   if [ "$HD" == "GOOD" ]; then
             	hdok=$(echo "scale=0; $hdok+1" | bc -l)
-    	   elif [ "$HD" == "--" ]; then    	        
+    	   elif [ "$HD" == "--" ]; then
     	        hdnop=$(echo "scale=0; $hdnop+1" | bc -l)
     	   else
                 output_crit=${output_crit}" Disk ${c}"
@@ -569,7 +569,7 @@ elif [ "$strpart" == "hdstatus" ]; then
         exit 2
     else
 	echo "OK: Online Disk $hdok, Free Slot $hdnop"
-	exit 0    
+	exit 0
     fi
 
 # Volume Status----------------------------------------------------------------------------------------------------------------------------------------
@@ -619,7 +619,7 @@ elif [ "$strpart" == "volstatus" ]; then
 	else
 	 factor2=$(echo "scale=0; 1" | bc -l)
 	fi
-	
+
 	VOLCAPACITYF=$(echo "scale=0; $VOLCAPACITY*$factor" | bc -l)
 	VOLFREESIZEF=$(echo "scale=0; $VOLFREESIZE*$factor2" | bc -l)
 
@@ -638,7 +638,7 @@ elif [ "$strpart" == "volstatus" ]; then
         else
            ALLOUTPUT="${ALLOUTPUT}Volume #${VOL}: $VOLSTAT, Total Size (bytes): $VOLCAPACITY $UNITtest, Free: $VOLFREESIZE $UNITtest2 (${VOLPCT}%)"
         fi
-		
+
 	#Performance Data
         if [ $VOL -gt 1 ]; then
           PERFOUTPUT=$PERFOUTPUT" "
@@ -657,7 +657,7 @@ elif [ "$strpart" == "volstatus" ]; then
      else
         exit 0
      fi
-     
+
 # Power Supply Status  ----------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "powerstatus" ]; then
      ALLOUTPUT=""
@@ -706,12 +706,12 @@ elif [ "$strpart" == "fans" ]; then
 	if [ $FAN -gt 1 ]; then
 		PERFOUTPUT=$PERFOUTPUT" "
 	fi
-	PERFOUTPUT=$PERFOUTPUT"Fan-$FAN=$FANSPEED;$strWarning;$strCritical" 
+	PERFOUTPUT=$PERFOUTPUT"Fan-$FAN=$FANSPEED;$strWarning;$strCritical"
 
         if [ "$FANSPEED" == "" ]; then
                 FANSTAT="CRITICAL: $FANSPEED RPM"
                 CRITICAL=1
-		
+
         elif [ "$FANSPEED" -le "$strCritical" ]; then
                 FANSTAT="CRITICAL: $FANSPEED RPM"
                 CRITICAL=1
@@ -745,8 +745,8 @@ elif [ "$strpart" == "fans" ]; then
 # System Uptime----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "systemuptime" ]; then
     	netuptime=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.2.1.1.3.0 | awk '{print $5, $6, $7, $8}')
-    	sysuptime=$(snmpget -v2c -c "$strCommunity" "$strHostname"  .1.3.6.1.2.1.25.1.1.0 | awk '{print $5, $6, $7, $8}') 
-    	
+    	sysuptime=$(snmpget -v2c -c "$strCommunity" "$strHostname"  .1.3.6.1.2.1.25.1.1.0 | awk '{print $5, $6, $7, $8}')
+
 	echo System Uptime $sysuptime - Network Uptime $netuptime
 	exit 0
 
