@@ -28,7 +28,7 @@ if [ ! "$#" == "5" ]; then
         echo
 	echo "Usage: ./check_qnap <hostname> <community> <part> <warning> <critical>"
         echo
-	echo "Parts are: sysinfo, systemuptime, temp, cpu, cputemp, freeram, powerstatus, fans, diskused, hdstatus, hd#status, hd#temp, volstatus (Raid Volume Status), vol#status"
+	echo "Parts are: status, sysinfo, systemuptime, temp, cpu, cputemp, freeram, powerstatus, fans, diskused, hdstatus, hd#status, hd#temp, volstatus (Raid Volume Status), vol#status"
         echo
 	echo "hdstatus shows status & temp; volstatus check all vols and vols space; powerstatus check power supply"
         echo "<#> is 1-8 for hd, 1-5 for vol"
@@ -60,14 +60,17 @@ function _snmpstatus() {
 
 # Check if QNAP is online
 TEST="$(_snmpstatus -t 5 -r 0 2>&1)"
-# echo "Test: $TEST";
 if [ "$TEST" == "Timeout: No Response from $strHostname" ]; then
-echo "CRITICAL: SNMP to $strHostname is not available or wrong community string";
-exit 2;
+	echo "CRITICAL: SNMP to $strHostname is not available or wrong community string";
+	exit 2;
 fi
 
+# STATUS ---------------------------------------------------------------------------------------------------------------------------------------
+if [ "$strpart" == "status" ]; then
+	echo "$TEST";
+
 # DISKUSED ---------------------------------------------------------------------------------------------------------------------------------------
-if [ "$strpart" == "diskused" ]; then
+elif [ "$strpart" == "diskused" ]; then
 	disk=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
 	free=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
 	UNITtest=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
@@ -119,7 +122,6 @@ if [ "$strpart" == "diskused" ]; then
 		echo "OK: "$OUTPUT
 		exit 0
 	fi
-
 
 # CPU ----------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "cpu" ]; then
@@ -547,7 +549,6 @@ elif [ "$strpart" == "hd8status" ]; then
                 echo CRITICAL: ERROR
                 exit 2
         fi
-
 
 # HD Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hdstatus" ]; then
