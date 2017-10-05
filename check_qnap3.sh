@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 ############################# Written and Manteined by Nicola Bandini     ###############
 ############################# Created and written by Matthias Luettermann ###############
 ############################# finetuning by primator@gmail.com
