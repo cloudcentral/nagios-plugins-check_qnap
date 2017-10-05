@@ -50,8 +50,16 @@ strpart=$3
 strWarning=$4
 strCritical=$5
 
+function _snmpget() {
+	snmpget -v 2c -c "$strCommunity" $strHostname "$@"
+}
+
+function _snmpstatus() {
+	snmpstatus -v 2c -c "$strCommunity" $strHostname "$@"
+}
+
 # Check if QNAP is online
-TEST=$(snmpstatus -v2c $strHostname -c "$strCommunity" -t 5 -r 0 2>&1)
+TEST="$(_snmpstatus -t 5 -r 0 2>&1)"
 # echo "Test: $TEST";
 if [ "$TEST" == "Timeout: No Response from $strHostname" ]; then
 echo "CRITICAL: SNMP to $strHostname is not available or wrong community string";
@@ -60,10 +68,10 @@ fi
 
 # DISKUSED ---------------------------------------------------------------------------------------------------------------------------------------
 if [ "$strpart" == "diskused" ]; then
-	disk=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
-	free=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
-	UNITtest=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
-	UNITtest2=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
+	disk=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
+	free=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
+	UNITtest=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
+	UNITtest2=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
         #echo $disk - $free - $UNITtest - $UNITtest2
 
 	if [ "$UNITtest" == "TB" ]; then
@@ -115,7 +123,7 @@ if [ "$strpart" == "diskused" ]; then
 
 # CPU ----------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "cpu" ]; then
-        CPU=$(snmpget -v2c -Ln -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.1.0 -Oqv | sed -E 's/"|\s%//g')
+        CPU=$(_snmpget -Ln 1.3.6.1.4.1.24681.1.2.1.0 -Oqv | sed -E 's/"|\s%//g')
 
         OUTPUT="CPU Load="$CPU"%|CPU load="$CPU"%;$strWarning;$strCritical;0;100"
 
@@ -132,7 +140,7 @@ elif [ "$strpart" == "cpu" ]; then
 
 # CPUTEMP ----------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "cputemp" ]; then
-    	TEMP0=$(snmpget -v2c -c "$strCommunity" $strHostname  .1.3.6.1.4.1.24681.1.2.5.0 | awk '{print $4}' | cut -c2-3)
+    	TEMP0=$(_snmpget .1.3.6.1.4.1.24681.1.2.5.0 | awk '{print $4}' | cut -c2-3)
 	OUTPUT="CPU Temperature="$TEMP0"C|NAS CPUtermperature="$TEMP0"C;$strWarning;$strCritical;0;90"
 
     	if [ "$TEMP0" -ge "89" ]; then
@@ -153,8 +161,8 @@ elif [ "$strpart" == "cputemp" ]; then
 
 # Free RAM---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "freeram" ]; then
-	TOTALRAM=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.2.0 | awk '{print $4 $5}' | sed 's/.\(.*\)...../\1/')
-	FREERAM=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.3.0 | awk '{print $4 $5}' | sed 's/.\(.*\)...../\1/')
+	TOTALRAM=$(_snmpget 1.3.6.1.4.1.24681.1.2.2.0 | awk '{print $4 $5}' | sed 's/.\(.*\)...../\1/')
+	FREERAM=$(_snmpget 1.3.6.1.4.1.24681.1.2.3.0 | awk '{print $4 $5}' | sed 's/.\(.*\)...../\1/')
 
 	let "USEDRAM=($TOTALRAM-$FREERAM)"
 
@@ -177,7 +185,7 @@ elif [ "$strpart" == "freeram" ]; then
 
 # System Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "temp" ]; then
-    	TEMP0=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.6.0 | awk '{print $4}' | cut -c2-3)
+    	TEMP0=$(_snmpget 1.3.6.1.4.1.24681.1.2.6.0 | awk '{print $4}' | cut -c2-3)
 	OUTPUT="Temperature="$TEMP0"C|NAS termperature="$TEMP0"C;$strWarning;$strCritical;0;80"
 
     	if [ "$TEMP0" -ge "89" ]; then
@@ -199,7 +207,7 @@ elif [ "$strpart" == "temp" ]; then
 
 # HD1 Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd1temp" ]; then
-    	TEMPHD=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.11.1.3.1 | awk '{print $4}' | cut -c2-3)
+    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.1 | awk '{print $4}' | cut -c2-3)
 	OUTPUT="Temperature="$TEMPHD"C|HDD1 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
 
     	if [ "$TEMPHD" -ge "59" ]; then
@@ -220,7 +228,7 @@ elif [ "$strpart" == "hd1temp" ]; then
 
 # HD2 Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd2temp" ]; then
-    	TEMPHD=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.11.1.3.2 | awk '{print $4}' | cut -c2-3)
+    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.2 | awk '{print $4}' | cut -c2-3)
 	OUTPUT="Temperature="$TEMPHD"C|HDD2 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
 
     	if [ "$TEMPHD" -ge "59" ]; then
@@ -241,7 +249,7 @@ elif [ "$strpart" == "hd2temp" ]; then
 
 # HD3 Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd3temp" ]; then
-    	TEMPHD=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.11.1.3.3 | awk '{print $4}' | cut -c2-3)
+    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.3 | awk '{print $4}' | cut -c2-3)
 	OUTPUT="Temperature="$TEMPHD"C|HDD3 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
 
     	if [ "$TEMPHD" -ge "59" ]; then
@@ -262,7 +270,7 @@ elif [ "$strpart" == "hd3temp" ]; then
 
 # HD4 Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd4temp" ]; then
-    	TEMPHD=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.11.1.3.4 | awk '{print $4}' | cut -c2-3)
+    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.4 | awk '{print $4}' | cut -c2-3)
 	OUTPUT="Temperature="$TEMPHD"C|HDD4 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
 
     	if [ "$TEMPHD" -ge "59" ]; then
@@ -283,7 +291,7 @@ elif [ "$strpart" == "hd4temp" ]; then
 
 # HD5 Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd5temp" ]; then
-    	TEMPHD=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.11.1.3.5 | awk '{print $4}' | cut -c2-3)
+    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.5 | awk '{print $4}' | cut -c2-3)
 	OUTPUT="Temperature="$TEMPHD"C|HDD5 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
 
     	if [ "$TEMPHD" -ge "59" ]; then
@@ -304,7 +312,7 @@ elif [ "$strpart" == "hd5temp" ]; then
 
 # HD6 Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd6temp" ]; then
-        TEMPHD=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.11.1.3.6 | awk '{print $4}' | cut -c2-3)
+        TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.6 | awk '{print $4}' | cut -c2-3)
         OUTPUT="Temperature="$TEMPHD"C|HDD6 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
 
         if [ "$TEMPHD" -ge "59" ]; then
@@ -325,7 +333,7 @@ elif [ "$strpart" == "hd6temp" ]; then
 
 # HD7 Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd7temp" ]; then
-        TEMPHD=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.11.1.3.7 | awk '{print $4}' | cut -c2-3)
+        TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.7 | awk '{print $4}' | cut -c2-3)
         OUTPUT="Temperature="$TEMPHD"C|HDD7 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
 
         if [ "$TEMPHD" -ge "59" ]; then
@@ -346,7 +354,7 @@ elif [ "$strpart" == "hd7temp" ]; then
 
 # HD8 Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd8temp" ]; then
-        TEMPHD=$(snmpget -v2c -c "$strCommunity" $strHostname 1.3.6.1.4.1.24681.1.2.11.1.3.8 | awk '{print $4}' | cut -c2-3)
+        TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.8 | awk '{print $4}' | cut -c2-3)
         OUTPUT="Temperature="$TEMPHD"C|HDD8 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
 
         if [ "$TEMPHD" -ge "59" ]; then
@@ -367,7 +375,7 @@ elif [ "$strpart" == "hd8temp" ]; then
 
 # Volume 1 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "vol1status" ]; then
-    	Vol_Status=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.6.1 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+    	Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.1 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
     	if [ "$Vol_Status" == "Ready" ]; then
             	echo OK: $Vol_Status
@@ -384,7 +392,7 @@ elif [ "$strpart" == "vol1status" ]; then
 
 # Volume 2 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "vol2status" ]; then
-        Vol_Status=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.6.2 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.2 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
         if [ "$Vol_Status" == "Ready" ]; then
                 echo OK: $Vol_Status
@@ -401,7 +409,7 @@ elif [ "$strpart" == "vol2status" ]; then
 
 # Volume 3 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "vol3status" ]; then
-        Vol_Status=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.6.3 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.3 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
         if [ "$Vol_Status" == "Ready" ]; then
                 echo OK: $Vol_Status
@@ -418,7 +426,7 @@ elif [ "$strpart" == "vol3status" ]; then
 
 # Volume 4 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "vol4status" ]; then
-        Vol_Status=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.6.4 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.4 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
         if [ "$Vol_Status" == "Ready" ]; then
                 echo OK: $Vol_Status
@@ -435,7 +443,7 @@ elif [ "$strpart" == "vol4status" ]; then
 
 # Volume 5 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "vol5status" ]; then
-        Vol_Status=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.6.5 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.5 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
         if [ "$Vol_Status" == "Ready" ]; then
                 echo OK: $Vol_Status
@@ -452,7 +460,7 @@ elif [ "$strpart" == "vol5status" ]; then
 
 # HD1 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd1status" ]; then
-    	HD1=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.11.1.7.1 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+    	HD1=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.7.1 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
     	if [ "$HD1" == "GOOD" ]; then
             	echo OK: GOOD
@@ -464,7 +472,7 @@ elif [ "$strpart" == "hd1status" ]; then
 
 # HD2 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd2status" ]; then
-    	HD2=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.11.1.7.2 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+    	HD2=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.7.2 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
     	if [ "$HD2" == "GOOD" ]; then
             	echo OK: GOOD
@@ -476,7 +484,7 @@ elif [ "$strpart" == "hd2status" ]; then
 
 # HD3 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd3status" ]; then
-    	HD3=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.3.11.1.7.3 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+    	HD3=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.3 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
     	if [ "$HD3" == "GOOD" ]; then
             	echo OK: GOOD
             	exit 0
@@ -487,7 +495,7 @@ elif [ "$strpart" == "hd3status" ]; then
 
 # HD4 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd4status" ]; then
-    	HD4=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.3.11.1.7.4 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+    	HD4=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.4 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
     	if [ "$HD4" == "GOOD" ]; then
             	echo OK: GOOD
             	exit 0
@@ -498,7 +506,7 @@ elif [ "$strpart" == "hd4status" ]; then
 
 # HD5 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd5status" ]; then
-        HD5=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.3.11.1.7.5 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        HD5=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.5 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
         if [ "$HD5" == "GOOD" ]; then
                 echo OK: GOOD
                 exit 0
@@ -509,7 +517,7 @@ elif [ "$strpart" == "hd5status" ]; then
 
 # HD6 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd6status" ]; then
-        HD6=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.3.11.1.7.6 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        HD6=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.6 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
         if [ "$HD6" == "GOOD" ]; then
                 echo OK: GOOD
                 exit 0
@@ -520,7 +528,7 @@ elif [ "$strpart" == "hd6status" ]; then
 
 # HD7 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd7status" ]; then
-        HD7=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.3.11.1.7.7 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        HD7=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.7 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
         if [ "$HD7" == "GOOD" ]; then
                 echo OK: GOOD
                 exit 0
@@ -531,7 +539,7 @@ elif [ "$strpart" == "hd7status" ]; then
 
 # HD8 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd8status" ]; then
-        HD8=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.3.11.1.7.8 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        HD8=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.8 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
         if [ "$HD8" == "GOOD" ]; then
                 echo OK: GOOD
                 exit 0
@@ -544,7 +552,7 @@ elif [ "$strpart" == "hd8status" ]; then
 # HD Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hdstatus" ]; then
 
-	hdnum=$(snmpget -v2c -c "$strCommunity" "$strHostname"  .1.3.6.1.4.1.24681.1.2.10.0 | awk '{print $4}')
+	hdnum=$(_snmpget .1.3.6.1.4.1.24681.1.2.10.0 | awk '{print $4}')
 
         hdok=0
         hdnop=0
@@ -552,7 +560,7 @@ elif [ "$strpart" == "hdstatus" ]; then
 
 	for (( c=1; c<=$hdnum; c++ ))
 	do
-	   HD=$(snmpget -v2c -c "$strCommunity" -mALL "$strHostname" 1.3.6.1.4.1.24681.1.2.11.1.7.$c | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+	   HD=$(_snmpget -mALL 1.3.6.1.4.1.24681.1.2.11.1.7.$c | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
 	   if [ "$HD" == "GOOD" ]; then
             	hdok=$(echo "scale=0; $hdok+1" | bc -l)
@@ -579,10 +587,10 @@ elif [ "$strpart" == "volstatus" ]; then
      WARNING=0
      CRITICAL=0
      VOL=1
-     VOLCOUNT=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.4.1.24681.1.2.16.0 | awk '{print $4}')
+     VOLCOUNT=$(_snmpget .1.3.6.1.4.1.24681.1.2.16.0 | awk '{print $4}')
 
      while [ "$VOL" -le "$VOLCOUNT" ]; do
-        Vol_Status=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.4.1.24681.1.2.17.1.6.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        Vol_Status=$(_snmpget .1.3.6.1.4.1.24681.1.2.17.1.6.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
 
         if [ "$Vol_Status" == "Ready" ]; then
                 VOLSTAT="OK: $Vol_Status"
@@ -599,10 +607,10 @@ elif [ "$strpart" == "volstatus" ]; then
         VOLFREESIZE=0
         VOLPCT=0
 
-        VOLCAPACITY=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.4.1.24681.1.2.17.1.4.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-        VOLFREESIZE=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.4.1.24681.1.2.17.1.5.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-        UNITtest=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.4.$VOL | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
-	UNITtest2=$(snmpget -v2c -c "$strCommunity" "$strHostname" 1.3.6.1.4.1.24681.1.2.17.1.5.$VOL | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
+        VOLCAPACITY=$(_snmpget .1.3.6.1.4.1.24681.1.2.17.1.4.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        VOLFREESIZE=$(_snmpget .1.3.6.1.4.1.24681.1.2.17.1.5.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+        UNITtest=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.$VOL | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
+	UNITtest2=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.$VOL | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
 
 	if [ "$UNITtest" == "TB" ]; then
 	 factor=$(echo "scale=0; 1000" | bc -l)
@@ -664,9 +672,9 @@ elif [ "$strpart" == "powerstatus" ]; then
      WARNING=0
      CRITICAL=0
      PS=1
-     COUNT=$(snmpget -v2c -c "$strCommunity" $strHostname .1.3.6.1.4.1.24681.1.4.1.1.1.1.3.1.0 | awk '{print $4}')
+     COUNT=$(_snmpget .1.3.6.1.4.1.24681.1.4.1.1.1.1.3.1.0 | awk '{print $4}')
      while [ "$PS" -le "$COUNT" ]; do
-        STATUS=$(snmpget -v2c -c "$strCommunity" $strHostname .1.3.6.1.4.1.24681.1.4.1.1.1.1.3.2.1.4.$PS | awk '{print $4}')
+        STATUS=$(_snmpget .1.3.6.1.4.1.24681.1.4.1.1.1.1.3.2.1.4.$PS | awk '{print $4}')
         if [ "$STATUS" -eq "0" ]; then
                 PSSTATUS="OK: GOOD"
         else
@@ -698,9 +706,9 @@ elif [ "$strpart" == "fans" ]; then
      WARNING=0
      CRITICAL=0
      FAN=1
-     FANCOUNT=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.4.1.24681.1.2.14.0 | awk '{print $4}')
+     FANCOUNT=$(_snmpget .1.3.6.1.4.1.24681.1.2.14.0 | awk '{print $4}')
      while [ "$FAN" -le "$FANCOUNT" ]; do
-        FANSPEED=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.4.1.24681.1.2.15.1.3.$FAN | awk '{print $4}' | cut -c 2- )
+        FANSPEED=$(_snmpget .1.3.6.1.4.1.24681.1.2.15.1.3.$FAN | awk '{print $4}' | cut -c 2- )
 
 	#Performance data
 	if [ $FAN -gt 1 ]; then
@@ -744,19 +752,19 @@ elif [ "$strpart" == "fans" ]; then
 
 # System Uptime----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "systemuptime" ]; then
-    	netuptime=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.2.1.1.3.0 | awk '{print $5, $6, $7, $8}')
-    	sysuptime=$(snmpget -v2c -c "$strCommunity" "$strHostname"  .1.3.6.1.2.1.25.1.1.0 | awk '{print $5, $6, $7, $8}')
+    	netuptime=$(_snmpget .1.3.6.1.2.1.1.3.0 | awk '{print $5, $6, $7, $8}')
+    	sysuptime=$(_snmpget .1.3.6.1.2.1.25.1.1.0 | awk '{print $5, $6, $7, $8}')
 
 	echo System Uptime $sysuptime - Network Uptime $netuptime
 	exit 0
 
 # System Info------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "sysinfo" ]; then
-	model=$(snmpget -v2c -c "$strCommunity" "$strHostname"  .1.3.6.1.4.1.24681.1.2.12.0 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-	hdnum=$(snmpget -v2c -c "$strCommunity" "$strHostname"  .1.3.6.1.4.1.24681.1.2.10.0 | awk '{print $4}')
-	VOLCOUNT=$(snmpget -v2c -c "$strCommunity" "$strHostname" .1.3.6.1.4.1.24681.1.2.16.0 | awk '{print $4}')
-	name=$(snmpget -v2c -c "$strCommunity" "$strHostname"  .1.3.6.1.4.1.24681.1.2.13.0  | awk '{print $4}' | sed 's/^"\(.*\)$/\1/')
-	firmware=$(snmpget -v2c -c "$strCommunity" "$strHostname"  .1.3.6.1.2.1.47.1.1.1.1.9.1 | awk '{print $4}' | sed 's/^"\(.*\)$/\1/')
+	model=$(_snmpget .1.3.6.1.4.1.24681.1.2.12.0 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+	hdnum=$(_snmpget .1.3.6.1.4.1.24681.1.2.10.0 | awk '{print $4}')
+	VOLCOUNT=$(_snmpget .1.3.6.1.4.1.24681.1.2.16.0 | awk '{print $4}')
+	name=$(_snmpget .1.3.6.1.4.1.24681.1.2.13.0  | awk '{print $4}' | sed 's/^"\(.*\)$/\1/')
+	firmware=$(_snmpget .1.3.6.1.2.1.47.1.1.1.1.9.1 | awk '{print $4}' | sed 's/^"\(.*\)$/\1/')
 
 	echo NAS $name, Model $model, Firmware $firmware, Max HD number $hdnum, No. Volume $VOLCOUNT
 	exit 0
