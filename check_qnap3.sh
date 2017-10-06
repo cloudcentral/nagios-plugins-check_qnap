@@ -210,173 +210,31 @@ elif [ "$strpart" == "temp" ]; then
 		exit 0
 	fi
 
-# HD1 Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd1temp" ]; then
-    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.1 | awk '{print $4}' | cut -c2-3)
-	OUTPUT="Temperature="$TEMPHD"C|HDD1 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
+# HDD Temperature---------------------------------------------------------------------------------------------------------------------------------------
+elif [[ "$strpart" == hd?temp ]]; then
+	hdnum="$(echo "$strpart" | sed -E 's/hd([0-9]+)temp/\1/')"
+	TEMPHD="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.11.1.3.$hdnum" | sed -E 's/"([0-9.]+) ?C.*/\1/')"
+	OUTPUT="Temperature=${TEMPHD}C|HDD$hdnum temperature=${TEMPHD}C;$strWarning;$strCritical;0;60"
 
-    	if [ "$TEMPHD" -ge "59" ]; then
-            	echo "HDD1 temperatur to high!: "$OUTPUT
-            	exit 2
-    	else
-            	if [ $TEMPHD -ge "$strCritical" ]; then
-                    	echo "CRITICAL: "$OUTPUT
-                    	exit 2
-            	fi
-            	if [ $TEMPHD -ge "$strWarning" ]; then
-                    	echo "WARNING: "$OUTPUT
-                    	exit 1
-            	fi
-            	echo "OK: "$OUTPUT
-            	exit 0
-    	fi
-
-# HD2 Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd2temp" ]; then
-    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.2 | awk '{print $4}' | cut -c2-3)
-	OUTPUT="Temperature="$TEMPHD"C|HDD2 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
-
-    	if [ "$TEMPHD" -ge "59" ]; then
-            	echo "HDD2 temperatur to high!: "$OUTPUT
-            	exit 2
-    	else
-            	if [ $TEMPHD -ge "$strCritical" ]; then
-                    	echo "CRITICAL: "$OUTPUT
-                    	exit 2
-            	fi
-            	if [ $TEMPHD -ge "$strWarning" ]; then
-                    	echo "WARNING: "$OUTPUT
-                    	exit 1
-            	fi
-            	echo "OK: "$OUTPUT
-            	exit 0
-    	fi
-
-# HD3 Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd3temp" ]; then
-    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.3 | awk '{print $4}' | cut -c2-3)
-	OUTPUT="Temperature="$TEMPHD"C|HDD3 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
-
-    	if [ "$TEMPHD" -ge "59" ]; then
-            	echo "HDD3 temperatur to high!: "$OUTPUT
-            	exit 2
-    	else
-            	if [ $TEMPHD -ge "$strCritical" ]; then
-                    	echo "CRITICAL: "$OUTPUT
-                    	exit 2
-            	fi
-            	if [ $TEMPHD -ge "$strWarning" ]; then
-                    	echo "WARNING: "$OUTPUT
-                    	exit 1
-            	fi
-            	echo "OK: "$OUTPUT
-            	exit 0
-    	fi
-
-# HD4 Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd4temp" ]; then
-    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.4 | awk '{print $4}' | cut -c2-3)
-	OUTPUT="Temperature="$TEMPHD"C|HDD4 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
-
-    	if [ "$TEMPHD" -ge "59" ]; then
-            	echo "HDD4 temperatur to high!: "$OUTPUT
-            	exit 2
-    	else
-            	if [ $TEMPHD -ge "$strCritical" ]; then
-                    	echo "CRITICAL: "$OUTPUT
-                    	exit 2
-            	fi
-            	if [ $TEMPHD -ge "$strWarning" ]; then
-                    	echo "WARNING: "$OUTPUT
-                    	exit 1
-            	fi
-            	echo "OK: "$OUTPUT
-            	exit 0
-    	fi
-
-# HD5 Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd5temp" ]; then
-    	TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.5 | awk '{print $4}' | cut -c2-3)
-	OUTPUT="Temperature="$TEMPHD"C|HDD5 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
-
-    	if [ "$TEMPHD" -ge "59" ]; then
-            	echo "HDD5 temperatur to high!: "$OUTPUT
-            	exit 2
-    	else
-            	if [ $TEMPHD -ge "$strCritical" ]; then
-                    	echo "CRITICAL: "$OUTPUT
-                    	exit 2
-            	fi
-            	if [ $TEMPHD -ge "$strWarning" ]; then
-                    	echo "WARNING: "$OUTPUT
-                    	exit 1
-            	fi
-            	echo "OK: "$OUTPUT
-            	exit 0
-    	fi
-
-# HD6 Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd6temp" ]; then
-        TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.6 | awk '{print $4}' | cut -c2-3)
-        OUTPUT="Temperature="$TEMPHD"C|HDD6 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
-
-        if [ "$TEMPHD" -ge "59" ]; then
-                echo "HDD6 temperatur to high!: "$OUTPUT
-                exit 2
-        else
-                if [ $TEMPHD -ge "$strCritical" ]; then
-                        echo "CRITICAL: "$OUTPUT
-                        exit 2
-                fi
-                if [ $TEMPHD -ge "$strWarning" ]; then
-                        echo "WARNING: "$OUTPUT
-                        exit 1
-                fi
-                echo "OK: "$OUTPUT
-                exit 0
-        fi
-
-# HD7 Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd7temp" ]; then
-        TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.7 | awk '{print $4}' | cut -c2-3)
-        OUTPUT="Temperature="$TEMPHD"C|HDD7 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
-
-        if [ "$TEMPHD" -ge "59" ]; then
-                echo "HDD7 temperatur to high!: "$OUTPUT
-                exit 2
-        else
-                if [ $TEMPHD -ge "$strCritical" ]; then
-                        echo "CRITICAL: "$OUTPUT
-                        exit 2
-                fi
-                if [ $TEMPHD -ge "$strWarning" ]; then
-                        echo "WARNING: "$OUTPUT
-                        exit 1
-                fi
-                echo "OK: "$OUTPUT
-                exit 0
-        fi
-
-# HD8 Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd8temp" ]; then
-        TEMPHD=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.3.8 | awk '{print $4}' | cut -c2-3)
-        OUTPUT="Temperature="$TEMPHD"C|HDD8 termperature="$TEMPHD"C;$strWarning;$strCritical;0;60"
-
-        if [ "$TEMPHD" -ge "59" ]; then
-                echo "HDD8 temperatur to high!: "$OUTPUT
-                exit 2
-        else
-                if [ $TEMPHD -ge "$strCritical" ]; then
-                        echo "CRITICAL: "$OUTPUT
-                        exit 2
-                fi
-                if [ $TEMPHD -ge "$strWarning" ]; then
-                        echo "WARNING: "$OUTPUT
-                        exit 1
-                fi
-                echo "OK: "$OUTPUT
-                exit 0
-        fi
+	if [ "$(echo "$TEMPHD" | sed -E 's/[0-9.]+//g')" != "" ]; then
+		echo "ERROR: $TEMPHD"
+		exit 4
+	fi
+	if [ "$TEMPHD" -ge "59" ]; then
+		echo "HDD$hdnum temperature too high!: $OUTPUT"
+		exit 3
+	else
+		if [ "$TEMPHD" -ge "$strCritical" ]; then
+			echo "CRITICAL: $OUTPUT"
+			exit 2
+		fi
+		if [ "$TEMPHD" -ge "$strWarning" ]; then
+			echo "WARNING: $OUTPUT"
+			exit 1
+		fi
+		echo "OK: $OUTPUT"
+		exit 0
+	fi
 
 # Volume 1 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "vol1status" ]; then
