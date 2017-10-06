@@ -474,25 +474,25 @@ elif [ "$strpart" == "fans" ]; then
 
 # System Uptime----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "systemuptime" ]; then
-    	netuptime=$(_snmpget .1.3.6.1.2.1.1.3.0 | awk '{print $5, $6, $7, $8}')
-    	sysuptime=$(_snmpget .1.3.6.1.2.1.25.1.1.0 | awk '{print $5, $6, $7, $8}')
+	netuptime="$(_snmpget .1.3.6.1.2.1.1.3.0 | awk '{print $5, $6, $7, $8}')"
+	sysuptime="$(_snmpget .1.3.6.1.2.1.25.1.1.0 | awk '{print $5, $6, $7, $8}')"
 
-	echo System Uptime $sysuptime - Network Uptime $netuptime
+	echo "System Uptime $sysuptime - Network Uptime $netuptime"
 	exit 0
 
 # System Info------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "sysinfo" ]; then
-	model=$(_snmpget .1.3.6.1.4.1.24681.1.2.12.0 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-	hdnum=$(_snmpget .1.3.6.1.4.1.24681.1.2.10.0 | awk '{print $4}')
-	VOLCOUNT=$(_snmpget .1.3.6.1.4.1.24681.1.2.16.0 | awk '{print $4}')
-	name=$(_snmpget .1.3.6.1.4.1.24681.1.2.13.0  | awk '{print $4}' | sed 's/^"\(.*\)$/\1/')
-	firmware=$(_snmpget .1.3.6.1.2.1.47.1.1.1.1.9.1 | awk '{print $4}' | sed 's/^"\(.*\)$/\1/')
+	model="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.12.0 | sed 's/^"\(.*\).$/\1/')"
+	hdnum="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.10.0)"
+	VOLCOUNT="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.16.0)"
+	name="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.13.0 | sed 's/^"\(.*\)$/\1/')"
+	firmware="$(_snmpgetval .1.3.6.1.2.1.47.1.1.1.1.9.1 | sed 's/^"\(.*\)$/\1/')"
 
-	echo NAS $name, Model $model, Firmware $firmware, Max HD number $hdnum, No. Volume $VOLCOUNT
+	echo "NAS $name, Model $model, Firmware $firmware, Max HD number $hdnum, No. Volume $VOLCOUNT"
 	exit 0
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------
 else
-    	echo -e "\nUnknown Part!" && exit "3"
+	echo -e "\nUnknown Part!" && exit 3
 fi
 exit 0
