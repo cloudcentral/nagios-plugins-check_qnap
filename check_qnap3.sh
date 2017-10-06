@@ -54,6 +54,10 @@ function _snmpget() {
 	snmpget -v 2c -c "$strCommunity" $strHostname "$@"
 }
 
+function _snmpgetval() {
+	snmpget -v 2c -c "$strCommunity" -Oqv $strHostname "$@"
+}
+
 function _snmpstatus() {
 	snmpstatus -v 2c -c "$strCommunity" $strHostname "$@"
 }
@@ -125,20 +129,20 @@ elif [ "$strpart" == "diskused" ]; then
 
 # CPU ----------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "cpu" ]; then
-        CPU=$(_snmpget -Ln 1.3.6.1.4.1.24681.1.2.1.0 -Oqv | sed -E 's/"|\s%//g')
+	CPU="$(_snmpgetval 1.3.6.1.4.1.24681.1.2.1.0 | sed -E 's/"([0-9.]+) ?%"/\1/')"
 
-        OUTPUT="CPU Load="$CPU"%|CPU load="$CPU"%;$strWarning;$strCritical;0;100"
+	OUTPUT="CPU Load=$CPU%|CPU load=$CPU%;$strWarning;$strCritical;0;100"
 
-        if (( $(echo "$CPU > $strCritical" | bc -l) )); then
-               echo "CRITICAL: "$OUTPUT
-               exit 2
-        elif ((  $(echo "$CPU > $strWarning" | bc -l) )); then
-                echo "WARNING: "$OUTPUT
-                exit 1
-        else
-                echo "OK: "$OUTPUT
-                exit 0
-        fi
+	if (( $(echo "$CPU > $strCritical" | bc -l) )); then
+		echo "CRITICAL: $OUTPUT"
+		exit 2
+	elif ((  $(echo "$CPU > $strWarning" | bc -l) )); then
+		echo "WARNING: $OUTPUT"
+		exit 1
+	else
+		echo "OK: $OUTPUT"
+		exit 0
+	fi
 
 # CPUTEMP ----------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "cputemp" ]; then
