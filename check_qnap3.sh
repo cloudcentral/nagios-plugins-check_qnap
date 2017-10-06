@@ -426,54 +426,51 @@ elif [ "$strpart" == "powerstatus" ]; then
 
 # Fan Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "fans" ]; then
-     ALLOUTPUT=""
-     PERFOUTPUT=""
-     WARNING=0
-     CRITICAL=0
-     FAN=1
-     FANCOUNT=$(_snmpget .1.3.6.1.4.1.24681.1.2.14.0 | awk '{print $4}')
-     while [ "$FAN" -le "$FANCOUNT" ]; do
-        FANSPEED=$(_snmpget .1.3.6.1.4.1.24681.1.2.15.1.3.$FAN | awk '{print $4}' | cut -c 2- )
+	ALLOUTPUT=""
+	PERFOUTPUT=""
+	WARNING=0
+	CRITICAL=0
+	FAN=1
+	FANCOUNT="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.14.0)"
 
-	#Performance data
-	if [ $FAN -gt 1 ]; then
-		PERFOUTPUT=$PERFOUTPUT" "
+	while [ "$FAN" -le "$FANCOUNT" ]; do
+		FANSPEED="$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.15.1.3.$FAN" | sed -E 's/"([0-9]+) ?RPM"/\1/')"
+
+		#Performance data
+		if [ $FAN -gt 1 ]; then
+			PERFOUTPUT="$PERFOUTPUT "
+		fi
+		PERFOUTPUT="${PERFOUTPUT}Fan-$FAN=$FANSPEED;$strWarning;$strCritical"
+
+		if [ "$FANSPEED" == "" ]; then
+			FANSTAT="CRITICAL: $FANSPEED RPM"
+			CRITICAL=1
+		elif [ "$FANSPEED" -le "$strCritical" ]; then
+			FANSTAT="CRITICAL: $FANSPEED RPM"
+			CRITICAL=1
+		elif [ "$FANSPEED" -le "$strWarning" ]; then
+			FANSTAT="WARNING: $FANSPEED RPM"
+			WARNING=1
+		else
+			FANSTAT="OK: $FANSPEED RPM"
+		fi
+
+		ALLOUTPUT="${ALLOUTPUT}Fan #${FAN}: $FANSTAT"
+		if [ "$FAN" -lt "$FANCOUNT" ]; then
+			ALLOUTPUT="${ALLOUTPUT}, "
+		fi
+		FAN="`expr $FAN + 1`"
+	done
+
+	echo "$ALLOUTPUT|$PERFOUTPUT"
+
+	if [ $CRITICAL -eq 1 ]; then
+		exit 2
+	elif [ $WARNING -eq 1 ]; then
+		exit 1
+	else
+		exit 0
 	fi
-	PERFOUTPUT=$PERFOUTPUT"Fan-$FAN=$FANSPEED;$strWarning;$strCritical"
-
-        if [ "$FANSPEED" == "" ]; then
-                FANSTAT="CRITICAL: $FANSPEED RPM"
-                CRITICAL=1
-
-        elif [ "$FANSPEED" -le "$strCritical" ]; then
-                FANSTAT="CRITICAL: $FANSPEED RPM"
-                CRITICAL=1
-
-        elif [ "$FANSPEED" -le "$strWarning" ]; then
-                FANSTAT="WARNING: $FANSPEED RPM"
-                WARNING=1
-        else
-                FANSTAT="OK: $FANSPEED RPM"
-        fi
-
-        if [ "$FAN" -lt "$FANCOUNT" ]; then
-           ALLOUTPUT="${ALLOUTPUT}Fan #${FAN}: $FANSTAT, "
-        else
-           ALLOUTPUT="${ALLOUTPUT}Fan #${FAN}: $FANSTAT"
-        fi
-
-        FAN=`expr $FAN + 1`
-     done
-
-     echo $ALLOUTPUT"|"$PERFOUTPUT
-
-     if [ $CRITICAL -eq 1 ]; then
-        exit 2
-     elif [ $WARNING -eq 1 ]; then
-        exit 1
-     else
-        exit 0
-     fi
 
 # System Uptime----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "systemuptime" ]; then
