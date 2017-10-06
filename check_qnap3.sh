@@ -146,24 +146,24 @@ elif [ "$strpart" == "cpu" ]; then
 
 # CPUTEMP ----------------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "cputemp" ]; then
-    	TEMP0=$(_snmpget .1.3.6.1.4.1.24681.1.2.5.0 | awk '{print $4}' | cut -c2-3)
-	OUTPUT="CPU Temperature="$TEMP0"C|NAS CPUtermperature="$TEMP0"C;$strWarning;$strCritical;0;90"
+	TEMP0="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.5.0 | sed -E 's/"([0-9.]+) ?C.*/\1/')"
+	OUTPUT="CPU Temperature=${TEMP0}C|NAS CPUtermperature=${TEMP0}C;$strWarning;$strCritical;0;90"
 
-    	if [ "$TEMP0" -ge "89" ]; then
-            	echo "Cpu temperatur to high!: "$OUTPUT
-            	exit 2
-    	else
-            	if [ $TEMP0 -ge "$strCritical" ]; then
-                    	echo "CRITICAL: "$OUTPUT
-                    	exit 2
-            	fi
-            	if [ $TEMP0 -ge "$strWarning" ]; then
-                    	echo "WARNING: "$OUTPUT
-                    	exit 1
-            	fi
-            	echo "OK: "$OUTPUT
-            	exit 0
-    	fi
+	if [ "$TEMP0" -ge 89 ]; then
+		echo "CPU temperature too high!: "$OUTPUT
+		exit 3
+	else
+		if [ "$TEMP0" -ge "$strCritical" ]; then
+			echo "CRITICAL: $OUTPUT"
+			exit 2
+		fi
+		if [ "$TEMP0" -ge "$strWarning" ]; then
+			echo "WARNING: $OUTPUT"
+			exit 1
+		fi
+		echo "OK: $OUTPUT"
+		exit 0
+	fi
 
 # Free RAM---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "freeram" ]; then
