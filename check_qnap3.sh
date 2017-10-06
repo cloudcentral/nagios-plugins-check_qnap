@@ -210,7 +210,7 @@ elif [ "$strpart" == "temp" ]; then
 		exit 0
 	fi
 
-# HDD Temperature---------------------------------------------------------------------------------------------------------------------------------------
+# HD# Temperature---------------------------------------------------------------------------------------------------------------------------------------
 elif [[ "$strpart" == hd?temp ]]; then
 	hdnum="$(echo "$strpart" | sed -E 's/hd([0-9]+)temp/\1/')"
 	TEMPHD="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.11.1.3.$hdnum" | sed -E 's/"([0-9.]+) ?C.*/\1/')"
@@ -236,7 +236,7 @@ elif [[ "$strpart" == hd?temp ]]; then
 		exit 0
 	fi
 
-# Volume Status----------------------------------------------------------------------------------------------------------------------------------------
+# Volume # Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [[ "$strpart" == vol?status ]]; then
 	volnum="$(echo "$strpart" | sed -E 's/vol([0-9]+)status/\1/')"
 	Vol_Status="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.17.1.6.$volnum" | sed 's/^"\(.*\).$/\1/')"
@@ -255,7 +255,7 @@ elif [[ "$strpart" == vol?status ]]; then
 		exit 2
 	fi
 
-# HDD Status----------------------------------------------------------------------------------------------------------------------------------------
+# HD# Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [[ "$strpart" == hd?status ]]; then
 	hdnum="$(echo "$strpart" | sed -E 's/hd([0-9]+)status/\1/')"
 	HDstat="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.11.1.7.$hdnum" | sed 's/^"\(.*\).$/\1/')"
@@ -273,34 +273,32 @@ elif [[ "$strpart" == hd?status ]]; then
 
 # HD Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hdstatus" ]; then
-
-	hdnum=$(_snmpget .1.3.6.1.4.1.24681.1.2.10.0 | awk '{print $4}')
-
-        hdok=0
-        hdnop=0
+	hdnum="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.10.0)"
+	hdok=0
+	hdnop=0
 	output_crit=""
 
 	for (( c=1; c<=$hdnum; c++ ))
 	do
-	   HD=$(_snmpget -mALL 1.3.6.1.4.1.24681.1.2.11.1.7.$c | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+		HD="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.11.1.7.$c" | sed 's/^"\(.*\).$/\1/')"
 
-	   if [ "$HD" == "GOOD" ]; then
-            	hdok=$(echo "scale=0; $hdok+1" | bc -l)
-    	   elif [ "$HD" == "--" ]; then
-    	        hdnop=$(echo "scale=0; $hdnop+1" | bc -l)
-    	   else
-                output_crit=${output_crit}" Disk ${c}"
-    	   fi
+		if [ "$HD" == "GOOD" ]; then
+			((hdok+=1))
+		elif [ "$HD" == "--" ]; then
+			((hdnop+=1))
+		else
+			output_crit="${output_crit} Disk ${c}"
+		fi
 	done
 
-    if [ -n "$output_crit" ]
-    then
-        echo "CRITICAL: ${output_crit}"
-        exit 2
-    else
-	echo "OK: Online Disk $hdok, Free Slot $hdnop"
-	exit 0
-    fi
+	if [ -n "$output_crit" ]
+	then
+		echo "CRITICAL: ${output_crit}"
+		exit 2
+	else
+		echo "OK: Online Disk $hdok, Free Slot $hdnop"
+		exit 0
+	fi
 
 # Volume Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "volstatus" ]; then
