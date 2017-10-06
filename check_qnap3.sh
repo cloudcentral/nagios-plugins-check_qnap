@@ -255,95 +255,21 @@ elif [[ "$strpart" == vol?status ]]; then
 		exit 2
 	fi
 
-# HD1 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd1status" ]; then
-    	HD1=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.7.1 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+# HDD Status----------------------------------------------------------------------------------------------------------------------------------------
+elif [[ "$strpart" == hd?status ]]; then
+	hdnum="$(echo "$strpart" | sed -E 's/hd([0-9]+)status/\1/')"
+	HDstat="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.11.1.7.$hdnum" | sed 's/^"\(.*\).$/\1/')"
 
-    	if [ "$HD1" == "GOOD" ]; then
-            	echo OK: GOOD
-            	exit 0
-    	else
-            	echo CRITICAL: ERROR
-            	exit 2
-    	fi
-
-# HD2 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd2status" ]; then
-    	HD2=$(_snmpget 1.3.6.1.4.1.24681.1.2.11.1.7.2 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-
-    	if [ "$HD2" == "GOOD" ]; then
-            	echo OK: GOOD
-            	exit 0
-    	else
-            	echo CRITICAL: ERROR
-            	exit 2
-    	fi
-
-# HD3 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd3status" ]; then
-    	HD3=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.3 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-    	if [ "$HD3" == "GOOD" ]; then
-            	echo OK: GOOD
-            	exit 0
-    	else
-            	echo CRITICAL: ERROR
-            	exit 2
-    	fi
-
-# HD4 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd4status" ]; then
-    	HD4=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.4 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-    	if [ "$HD4" == "GOOD" ]; then
-            	echo OK: GOOD
-            	exit 0
-    	else
-            	echo CRITICAL: ERROR
-            	exit 2
-    	fi
-
-# HD5 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd5status" ]; then
-        HD5=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.5 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-        if [ "$HD5" == "GOOD" ]; then
-                echo OK: GOOD
-                exit 0
-        else
-                echo CRITICAL: ERROR
-                exit 2
-        fi
-
-# HD6 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd6status" ]; then
-        HD6=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.6 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-        if [ "$HD6" == "GOOD" ]; then
-                echo OK: GOOD
-                exit 0
-        else
-                echo CRITICAL: ERROR
-                exit 2
-        fi
-
-# HD7 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd7status" ]; then
-        HD7=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.7 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-        if [ "$HD7" == "GOOD" ]; then
-                echo OK: GOOD
-                exit 0
-        else
-                echo CRITICAL: ERROR
-                exit 2
-        fi
-
-# HD8 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hd8status" ]; then
-        HD8=$(_snmpget 1.3.6.1.4.1.24681.1.3.11.1.7.8 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-        if [ "$HD8" == "GOOD" ]; then
-                echo OK: GOOD
-                exit 0
-        else
-                echo CRITICAL: ERROR
-                exit 2
-        fi
+	if [[ "$HDstat" == 'No Such Instance'* ]]; then
+		echo "ERROR: $HDstat"
+		exit 4
+	elif [ "$HDstat" == "GOOD" ]; then
+		echo "OK: GOOD"
+		exit 0
+	else
+		echo "CRITICAL: ERROR"
+		exit 2
+	fi
 
 # HD Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hdstatus" ]; then
