@@ -58,6 +58,17 @@ function _snmpstatus() {
 	snmpstatus -v 2c -c "$strCommunity" $strHostname "$@"
 }
 
+function _get_exp() {
+	case "$1" in
+		PB)	echo "40" ;;
+		TB)	echo "30" ;;
+		GB)	echo "20" ;;
+		MB)	echo "10" ;;
+		'')	echo "0" ;;
+		*)	echo "ERROR: unknown unit '$1'" ;;
+	esac
+}
+
 # Check if QNAP is online
 TEST="$(_snmpstatus -t 5 -r 0 2>&1)"
 if [ "$TEST" == "Timeout: No Response from $strHostname" ]; then
@@ -71,55 +82,44 @@ if [ "$strpart" == "status" ]; then
 
 # DISKUSED ---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "diskused" ]; then
-	disk=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
-	free=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $4}' | sed 's/.\(.*\)/\1/')
-	UNITtest=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
-	UNITtest2=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.1 | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
-        #echo $disk - $free - $UNITtest - $UNITtest2
+	diskStr="$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.1)"
+	freeStr="$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.1)"
 
-	if [ "$UNITtest" == "TB" ]; then
-	 factor=$(echo "scale=0; 1000" | bc -l)
-	elif [ "$UNITtest" == "GB" ]; then
-	 factor=$(echo "scale=0; 100" | bc -l)
-	else
-	 factor=$(echo "scale=0; 1" | bc -l)
-	fi
+	diskSize="$(echo "$diskStr" | awk '{print $4}' | sed 's/.\(.*\)/\1/')"
+	freeSize="$(echo "$freeStr" | awk '{print $4}' | sed 's/.\(.*\)/\1/')"
+	diskUnit="$(echo "$diskStr" | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')"
+	freeUnit="$(echo "$freeStr" | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')"
 
-	if [ "$UNITtest2" == "TB" ]; then
-	 factor2=$(echo "scale=0; 1000" | bc -l)
-	elif [ "$UNITtest2" == "GB" ]; then
-	 factor2=$(echo "scale=0; 100" | bc -l)
-	else
-	 factor2=$(echo "scale=0; 1" | bc -l)
-	fi
+	diskExp="$(_get_exp "$diskUnit")"
+	freeExp="$(_get_exp "$freeUnit")"
 
-	#echo $factor - $factor2
-	disk=$(echo "scale=0; $disk*$factor" | bc -l)
-	free=$(echo "scale=0; $free*$factor2" | bc -l)
+	disk="$(echo "scale=0; $diskSize*(2^$diskExp)" | bc -l)"
+	free="$(echo "scale=0; $freeSize*(2^$freeExp)" | bc -l)"
 
-	#debug used=$(echo "scale=0; 9000*1000" | bc -l)
-	used=$(echo "scale=0; $disk-$free" | bc -l)
+	used="$(echo "scale=0; $disk-$free" | bc -l)"
+	perc="$(echo "scale=0; $used*100/$disk" | bc -l)"
 
-	#echo $disk - $free - $used
-	PERC=$(echo "scale=0; $used*100/$disk" | bc -l)
+	diskH="$(echo "scale=2; $disk/(2^$diskExp)" | bc -l)"
+	freeH="$(echo "scale=2; $free/(2^$freeExp)" | bc -l)"
+	usedH="$(echo "scale=2; $used/(2^$diskExp)" | bc -l)"
 
-	diskF=$(echo "scale=0; $disk/$factor" | bc -l)
-	freeF=$(echo "scale=0; $free/$factor" | bc -l)
-	usedF=$(echo "scale=0; $used/$factor" | bc -l)
+	diskF="$diskH$diskUnit"
+	freeF="$freeH$freeUnit"
+	usedF="$usedH$diskUnit"
 
 	#wdisk=$(echo "scale=0; $strWarning*$disk/100" | bc -l)
 	#cdisk=$(echo "scale=0; $strCritical*$disk/100" | bc -l)
 
-        OUTPUT="Total:"$diskF"$UNITtest - Used:"$usedF"$UNITtest - Free:"$freeF"$UNITtest2 - Used Space: $PERC%|Used=$PERC;$strWarning;$strCritical;0;100"
+	OUTPUT="Total:$diskF - Used:$usedF - Free:$freeF - Used Space: $perc%|Used=$perc;$strWarning;$strCritical;0;100"
 
-	if [ $PERC -ge $strCritical ]; then
-		echo "CRITICAL: "$OUTPUT
+	if [ $perc -ge $strCritical ]; then
+		echo "CRITICAL: $OUTPUT"
 		exit 2
-	elif [ $PERC -ge $strWarning ]; then
-		echo "WARNING: "$OUTPUT
+	elif [ $perc -ge $strWarning ]; then
+		echo "WARNING: $OUTPUT"
 		exit 1
 	else
-		echo "OK: "$OUTPUT
+		echo "OK: $OUTPUT"
 		exit 0
 	fi
 
