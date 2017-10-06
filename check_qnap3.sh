@@ -236,90 +236,24 @@ elif [[ "$strpart" == hd?temp ]]; then
 		exit 0
 	fi
 
-# Volume 1 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "vol1status" ]; then
-    	Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.1 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+# Volume Status----------------------------------------------------------------------------------------------------------------------------------------
+elif [[ "$strpart" == vol?status ]]; then
+	volnum="$(echo "$strpart" | sed -E 's/vol([0-9]+)status/\1/')"
+	Vol_Status="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.17.1.6.$volnum" | sed 's/^"\(.*\).$/\1/')"
 
-    	if [ "$Vol_Status" == "Ready" ]; then
-            	echo OK: $Vol_Status
-            	exit 0
-
-    	elif [ "$Vol_Status" == "Rebuilding..." ]; then
-            	echo "WARNING: "$Vol_Status
-            	exit 1
-
-    	else
-            	echo "CRITICAL: "$Vol_Status
-            	exit 2
-    	fi
-
-# Volume 2 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "vol2status" ]; then
-        Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.2 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-
-        if [ "$Vol_Status" == "Ready" ]; then
-                echo OK: $Vol_Status
-                exit 0
-
-        elif [ "$Vol_Status" == "Rebuilding..." ]; then
-                echo "WARNING: "$Vol_Status
-                exit 1
-
-        else
-                echo "CRITICAL: "$Vol_Status
-                exit 2
-        fi
-
-# Volume 3 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "vol3status" ]; then
-        Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.3 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-
-        if [ "$Vol_Status" == "Ready" ]; then
-                echo OK: $Vol_Status
-                exit 0
-
-        elif [ "$Vol_Status" == "Rebuilding..." ]; then
-                echo "WARNING: "$Vol_Status
-                exit 1
-
-        else
-                echo "CRITICAL: "$Vol_Status
-                exit 2
-        fi
-
-# Volume 4 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "vol4status" ]; then
-        Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.4 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-
-        if [ "$Vol_Status" == "Ready" ]; then
-                echo OK: $Vol_Status
-                exit 0
-
-        elif [ "$Vol_Status" == "Rebuilding..." ]; then
-                echo "WARNING: "$Vol_Status
-                exit 1
-
-        else
-                echo "CRITICAL: "$Vol_Status
-                exit 2
-        fi
-
-# Volume 5 Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "vol5status" ]; then
-        Vol_Status=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.6.5 | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-
-        if [ "$Vol_Status" == "Ready" ]; then
-                echo OK: $Vol_Status
-                exit 0
-
-        elif [ "$Vol_Status" == "Rebuilding..." ]; then
-                echo "WARNING: "$Vol_Status
-                exit 1
-
-        else
-                echo "CRITICAL: "$Vol_Status
-                exit 2
-        fi
+	if [[ "$Vol_Status" == 'No Such Instance'* ]]; then
+		echo "ERROR: $Vol_Status"
+		exit 4
+	elif [ "$Vol_Status" == "Ready" ]; then
+		echo "OK: $Vol_Status"
+		exit 0
+	elif [ "$Vol_Status" == "Rebuilding..." ]; then
+		echo "WARNING: $Vol_Status"
+		exit 1
+	else
+		echo "CRITICAL: $Vol_Status"
+		exit 2
+	fi
 
 # HD1 Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "hd1status" ]; then
