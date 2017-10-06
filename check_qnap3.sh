@@ -388,36 +388,41 @@ elif [ "$strpart" == "volstatus" ]; then
 
 # Power Supply Status  ----------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "powerstatus" ]; then
-     ALLOUTPUT=""
-     WARNING=0
-     CRITICAL=0
-     PS=1
-     COUNT=$(_snmpget .1.3.6.1.4.1.24681.1.4.1.1.1.1.3.1.0 | awk '{print $4}')
-     while [ "$PS" -le "$COUNT" ]; do
-        STATUS=$(_snmpget .1.3.6.1.4.1.24681.1.4.1.1.1.1.3.2.1.4.$PS | awk '{print $4}')
-        if [ "$STATUS" -eq "0" ]; then
-                PSSTATUS="OK: GOOD"
-        else
-                PSSTATUS="CRITICAL: ERROR"
-                CRITICAL=1
-        fi
-        if [ "$PS" -lt "$COUNT" ]; then
-           ALLOUTPUT="${ALLOUTPUT}Power Supply #${PS} - $PSSTATUS\n"
-        else
-           ALLOUTPUT="${ALLOUTPUT}Power Supply #${PS} - $PSSTATUS"
-        fi
-        PS=`expr $PS + 1`
-     done
+	ALLOUTPUT=""
+	WARNING=0
+	CRITICAL=0
+	PS=1
+	COUNT="$(_snmpgetval .1.3.6.1.4.1.24681.1.4.1.1.1.1.3.1.0)"
 
-     echo $ALLOUTPUT
+	if [[ "$COUNT" == 'No Such Object'* ]]; then
+		echo "ERROR: $COUNT"
+		exit 4
+	fi
 
-     if [ $CRITICAL -eq 1 ]; then
-        exit 2
-     elif [ $WARNING -eq 1 ]; then
-        exit 1
-     else
-        exit 0
-     fi
+	while [ "$PS" -le "$COUNT" ]; do
+		STATUS="$(_snmpgetval ".1.3.6.1.4.1.24681.1.4.1.1.1.1.3.2.1.4.$PS")"
+		if [ "$STATUS" -eq 0 ]; then
+			PSSTATUS="OK: GOOD"
+		else
+			PSSTATUS="CRITICAL: ERROR"
+			CRITICAL=1
+		fi
+		ALLOUTPUT="${ALLOUTPUT}Power Supply #$PS - $PSSTATUS"
+		if [ "$PS" -lt "$COUNT" ]; then
+			ALLOUTPUT="$ALLOUTPUT\n"
+		fi
+		PS="`expr $PS + 1`"
+	done
+
+	echo "$ALLOUTPUT"
+
+	if [ $CRITICAL -eq 1 ]; then
+		exit 2
+	elif [ $WARNING -eq 1 ]; then
+		exit 1
+	else
+		exit 0
+	fi
 
 # Fan Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "fans" ]; then
