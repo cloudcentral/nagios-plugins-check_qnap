@@ -44,11 +44,11 @@ if [ ! "$#" == "5" ]; then
         exit 3
 fi
 
-strHostname=$1
-strCommunity=$2
-strpart=$3
-strWarning=$4
-strCritical=$5
+strHostname="$1"
+strCommunity="$2"
+strpart="$3"
+strWarning="$4"
+strCritical="$5"
 
 function _snmpget() {
 	snmpget -v 2c -c "$strCommunity" $strHostname "$@"
