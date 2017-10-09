@@ -167,26 +167,42 @@ elif [ "$strpart" == "cputemp" ]; then
 
 # Free RAM---------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "freeram" ]; then
-	TOTALRAM=$(_snmpget 1.3.6.1.4.1.24681.1.2.2.0 | awk '{print $4 $5}' | sed 's/.\(.*\)...../\1/')
-	FREERAM=$(_snmpget 1.3.6.1.4.1.24681.1.2.3.0 | awk '{print $4 $5}' | sed 's/.\(.*\)...../\1/')
+	totalMemStr="$(_snmpgetval 1.3.6.1.4.1.24681.1.2.2.0)"
+	freeMemStr="$(_snmpgetval 1.3.6.1.4.1.24681.1.2.3.0)"
 
-	let "USEDRAM=($TOTALRAM-$FREERAM)"
+	totalMemSize="$(echo "$totalMemStr" | sed -E 's/"([0-9.]+) ?.?B"/\1/')"
+	freeMemSize="$(echo "$freeMemStr" | sed -E 's/"([0-9.]+) ?.?B"/\1/')"
+	totalMemUnit="$(echo "$totalMemStr" | sed -E 's/"[0-9.]+ ?(.?B)"/\1/')"
+	freeMemUnit="$(echo "$freeMemStr" | sed -E 's/"[0-9.]+ ?(.?B)"/\1/')"
 
-	let "RAMPERC=(100-($FREERAM*100)/$TOTALRAM)"
+	totalMemExp="$(_get_exp "$totalMemUnit")"
+	freeMemExp="$(_get_exp "$freeMemUnit")"
 
-	OUTPUT="Total:"$TOTALRAM"MB - Used:"$USEDRAM"MB - Free:"$FREERAM"MB = "$RAMPERC"%|Memory usage="$RAMPERC"%;$strWarning;$strCritical;0;100"
+	totalMem="$(echo "scale=0; $totalMemSize*(2^$totalMemExp)" | bc -l)"
+	freeMem="$(echo "scale=0; $freeMemSize*(2^$freeMemExp)" | bc -l)"
 
-	if [ $RAMPERC -ge $strCritical ]; then
-		echo "CRITICAL: "$OUTPUT
+	usedMem="$(echo "scale=0; $totalMem-$freeMem" | bc -l)"
+	percMem="$(echo "scale=0; $usedMem*100/$totalMem" | bc -l)"
+
+	totalMemH="$(echo "scale=1; $totalMem/(2^$totalMemExp)" | bc -l)"
+	freeMemH="$(echo "scale=1; $freeMem/(2^$freeMemExp)" | bc -l)"
+	usedMemH="$(echo "scale=1; $usedMem/(2^$freeMemExp)" | bc -l)"
+
+	totalMemF="$totalMemH$totalMemUnit"
+	freeMemF="$freeMemH$freeMemUnit"
+	usedMemF="$usedMemH$freeMemUnit"
+
+	OUTPUT="Total:$totalMemF - Used:$usedMemF - Free:$freeMemF = $percMem%|Memory usage=$percMem%;$strWarning;$strCritical;0;100"
+
+	if [ $percMem -ge $strCritical ]; then
+		echo "CRITICAL: $OUTPUT"
 		exit 2
-
-	elif [ $RAMPERC -ge $strWarning ]; then
-		echo "WARNING: "$OUTPUT
+	elif [ $percMem -ge $strWarning ]; then
+		echo "WARNING: $OUTPUT"
 		exit 1
-
-	else echo "OK: "$OUTPUT
+	else
+		echo "OK: $OUTPUT"
 		exit 0
-
 	fi
 
 # System Temperature---------------------------------------------------------------------------------------------------------------------------------------
