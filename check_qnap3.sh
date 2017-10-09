@@ -20,13 +20,15 @@
 #Version 1.23
 plgVer=1.23
 
-if [ ! "$#" == "5" ]; then
+usage() {
 	echo
 	echo "Check_QNAP3 $plgVer"
 	echo
 	echo "Warning: Wrong command line arguments."
 	echo
-	echo "Usage: ${0##*/} <hostname> <community> <part> <warning> <critical>"
+	echo "Usage: ${0##*/} [-V protocol] <hostname> <community> <part> <warning> <critical>"
+	echo
+	echo "Where: protocol - SNMP protocol version to use (1, 2c, 3); default: 2c"
 	echo
 	echo "Parts are: status, sysinfo, systemuptime, temp, cpu, cputemp, freeram, powerstatus, fans, diskused, hdstatus, hd#status, hd#temp, volstatus (Raid Volume Status), vol#status"
 	echo
@@ -42,7 +44,38 @@ if [ ! "$#" == "5" ]; then
 	echo "                   critical and warning are minimum speed in rpm for fans"
 	echo
 	exit 3
-fi
+}
+
+protocol="2c"
+secstropt="-c"
+
+while getopts 'V:?' opt
+do
+	case "$opt" in
+		\?)
+			usage
+			;;
+		V)
+			protocol="$OPTARG"
+			case "$protocol" in
+				3)
+					secstropt="-u"
+					;;
+				2c|1)
+					secstropt="-c"
+					;;
+				*)
+					echo "ERROR: wrong protocol version" >&2
+					exit 3
+					;;
+			esac
+			;;
+	esac
+done
+
+shift $(($OPTIND-1))
+
+[ $# -ne 5 ] && usage
 
 strHostname="$1"
 strCommunity="$2"
@@ -51,15 +84,15 @@ strWarning="$4"
 strCritical="$5"
 
 function _snmpget() {
-	snmpget -v 2c -c "$strCommunity" $strHostname "$@"
+	snmpget -v $protocol $secstropt "$strCommunity" "$strHostname" "$@"
 }
 
 function _snmpgetval() {
-	snmpget -v 2c -c "$strCommunity" -Oqv $strHostname "$@"
+	snmpget -v $protocol $secstropt "$strCommunity" -Oqv "$strHostname" "$@"
 }
 
 function _snmpstatus() {
-	snmpstatus -v 2c -c "$strCommunity" $strHostname "$@"
+	snmpstatus -v $protocol $secstropt "$strCommunity" "$strHostname" "$@"
 }
 
 function _get_exp() {
