@@ -449,6 +449,10 @@ elif [ "$strpart" == "fans" ]; then
 	FAN=1
 	FANCOUNT="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.14.0)"
 
+	if [ "$strWarning" -lt "$strCritical" ]; then
+		echo "Warning threshold ($strWarning) is less than critical threshold ($strCritical) ! -- Are you sure ?"
+	fi
+
 	while [ "$FAN" -le "$FANCOUNT" ]; do
 		FANSPEED="$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.15.1.3.$FAN" | sed -E 's/"([0-9]+) ?RPM"/\1/')"
 
