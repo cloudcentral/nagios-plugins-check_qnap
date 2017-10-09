@@ -325,6 +325,10 @@ elif [ "$strpart" == "volstatus" ]; then
 	VOL=1
 	VOLCOUNT="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.16.0)"
 
+	if [ "$strWarning" -lt "$strCritical" ]; then
+		echo "Warning threshold ($strWarning) is less than critical threshold ($strCritical) ! -- Are you sure ?"
+	fi
+
 	while [ "$VOL" -le "$VOLCOUNT" ]; do
 		Vol_Status="$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.17.1.6.$VOL" | sed 's/^"\(.*\).$/\1/')"
 
