@@ -21,27 +21,27 @@
 plgVer=1.23
 
 if [ ! "$#" == "5" ]; then
-        echo
-        echo "Check_QNAP3 "$plgVer
-        echo
-    	echo "Warning: Wrong command line arguments."
-        echo
-	echo "Usage: ./check_qnap <hostname> <community> <part> <warning> <critical>"
-        echo
+	echo
+	echo "Check_QNAP3 $plgVer"
+	echo
+	echo "Warning: Wrong command line arguments."
+	echo
+	echo "Usage: ${0##*/} <hostname> <community> <part> <warning> <critical>"
+	echo
 	echo "Parts are: status, sysinfo, systemuptime, temp, cpu, cputemp, freeram, powerstatus, fans, diskused, hdstatus, hd#status, hd#temp, volstatus (Raid Volume Status), vol#status"
-        echo
-	echo "hdstatus shows status & temp; volstatus check all vols and vols space; powerstatus check power supply"
-        echo "<#> is 1-8 for hd, 1-5 for vol"
 	echo
-        echo " Example for diskusage: ./check_qnap3.sh 127.0.0.1 public diskused 80 95"
+	echo "hdstatus shows status & temp; volstatus checks all vols and vols space; powerstatus checks power supply"
+	echo "<#> is 1-8 for hd, 1-5 for vol"
 	echo
-	echo " Example for volstatus: ./check_qnap3.sh 127.0.0.1 public volstatus 15 10"
-	echo "                        critical and warning value are releted to free disk space"
+	echo " Example for diskusage: ${0##*/} 127.0.0.1 public diskused 80 95"
 	echo
-	echo " Example for fans: ./check_qnap3.sh 127.0.0.1 public fans 2000 1900"
+	echo " Example for volstatus: ${0##*/} 127.0.0.1 public volstatus 15 10"
+	echo "                        critical and warning value are related to free disk space"
+	echo
+	echo " Example for fans: ${0##*/} 127.0.0.1 public fans 2000 1900"
 	echo "                   critical and warning are minimum speed in rpm for fans"
 	echo
-        exit 3
+	exit 3
 fi
 
 strHostname="$1"
