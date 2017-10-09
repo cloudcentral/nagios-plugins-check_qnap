@@ -318,89 +318,83 @@ elif [ "$strpart" == "hdstatus" ]; then
 
 # Volume Status----------------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "volstatus" ]; then
-     ALLOUTPUT=""
-     PERFOUTPUT=""
-     WARNING=0
-     CRITICAL=0
-     VOL=1
-     VOLCOUNT=$(_snmpget .1.3.6.1.4.1.24681.1.2.16.0 | awk '{print $4}')
+	ALLOUTPUT=""
+	PERFOUTPUT=""
+	WARNING=0
+	CRITICAL=0
+	VOL=1
+	VOLCOUNT="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.16.0)"
 
-     while [ "$VOL" -le "$VOLCOUNT" ]; do
-        Vol_Status=$(_snmpget .1.3.6.1.4.1.24681.1.2.17.1.6.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
+	while [ "$VOL" -le "$VOLCOUNT" ]; do
+		Vol_Status="$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.17.1.6.$VOL" | sed 's/^"\(.*\).$/\1/')"
 
-        if [ "$Vol_Status" == "Ready" ]; then
-                VOLSTAT="OK: $Vol_Status"
+		if [ "$Vol_Status" == "Ready" ]; then
+			VOLSTAT="OK: $Vol_Status"
+		elif [ "$Vol_Status" == "Rebuilding..." ]; then
+			VOLSTAT="WARNING: $Vol_Status"
+			WARNING=1
+		else
+			VOLSTAT="CRITICAL: $Vol_Status"
+			CRITICAL=1
+		fi
 
-        elif [ "$Vol_Status" == "Rebuilding..." ]; then
-                VOLSTAT="WARNING: $Vol_Status"
-                WARNING=1
-        else
-                VOLSTAT="CRITICAL: $Vol_Status"
-                CRITICAL=1
-        fi
+		volCpctStr="$(_snmpget ".1.3.6.1.4.1.24681.1.2.17.1.4.$VOL")"
+		volFreeStr="$(_snmpget ".1.3.6.1.4.1.24681.1.2.17.1.5.$VOL")"
 
-        VOLCAPACITY=0
-        VOLFREESIZE=0
-        VOLPCT=0
+		volCpctSize="$(echo "$volCpctStr" | awk '{print $4}' | sed 's/.\(.*\)/\1/')"
+		volFreeSize="$(echo "$volFreeStr" | awk '{print $4}' | sed 's/.\(.*\)/\1/')"
+		volCpctUnit="$(echo "$volCpctStr" | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')"
+		volFreeUnit="$(echo "$volFreeStr" | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')"
 
-        VOLCAPACITY=$(_snmpget .1.3.6.1.4.1.24681.1.2.17.1.4.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-        VOLFREESIZE=$(_snmpget .1.3.6.1.4.1.24681.1.2.17.1.5.$VOL | awk '{print $4}' | sed 's/^"\(.*\).$/\1/')
-        UNITtest=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.$VOL | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
-	UNITtest2=$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.$VOL | awk '{print $5}' | sed 's/.*\(.B\).*/\1/')
+		volCpctExp="$(_get_exp "$volCpctUnit")"
+		volFreeExp="$(_get_exp "$volFreeUnit")"
 
-	if [ "$UNITtest" == "TB" ]; then
-	 factor=$(echo "scale=0; 1000" | bc -l)
-	elif [ "$UNITtest" == "GB" ]; then
-	 factor=$(echo "scale=0; 100" | bc -l)
+		volCpct="$(echo "scale=0; $volCpctSize*(2^$volCpctExp)" | bc -l)"
+		volFree="$(echo "scale=0; $volFreeSize*(2^$volFreeExp)" | bc -l)"
+		volUsed="$(echo "scale=0; $volCpct-$volFree" | bc -l)"
+
+		volFreePct="$(echo "scale=0; $volFree*100/$volCpct" | bc -l)"
+		volUsedPct="$(echo "scale=0; $volUsed*100/$volCpct" | bc -l)"
+
+		volCpctH="$(echo "scale=2; $volCpct/(2^$volCpctExp)" | bc -l)"
+		volFreeH="$(echo "scale=2; $volFree/(2^$volFreeExp)" | bc -l)"
+		volUsedH="$(echo "scale=2; $volUsed/(2^$volFreeExp)" | bc -l)"
+
+		volCpctF="$volCpctH $volCpctUnit"
+		volFreeF="$volFreeH $volFreeUnit"
+		volUsedF="$volUsedH $volFreeUnit"
+
+		if [ "$volFreePct" -le "$strCritical" ]; then
+			volFreePct="CRITICAL: $volFreePct"
+			CRITICAL=1
+		elif [ "$volFreePct" -le "$strWarning" ]; then
+			volFreePct="WARNING: $volFreePct"
+			WARNING=1
+		fi
+
+		ALLOUTPUT="${ALLOUTPUT}Volume #$VOL: $VOLSTAT, Total Size (bytes): $volCpctF, Free: $volFreeF (${volFreePct}%)"
+		if [ "$VOL" -lt "$VOLCOUNT" ]; then
+			ALLOUTPUT="${ALLOUTPUT}, "
+		fi
+
+		#Performance Data
+		if [ $VOL -gt 1 ]; then
+			PERFOUTPUT="$PERFOUTPUT "
+		fi
+		PERFOUTPUT="${PERFOUTPUT}FreeSize_Volume-$VOL=${volFreePct}%;$strWarning;$strCritical;0;100"
+
+		VOL="`expr $VOL + 1`"
+	done
+
+	echo "$ALLOUTPUT|$PERFOUTPUT"
+
+	if [ $CRITICAL -eq 1 ]; then
+		exit 2
+	elif [ $WARNING -eq 1 ]; then
+		exit 1
 	else
-	 factor=$(echo "scale=0; 1" | bc -l)
+		exit 0
 	fi
-
-	if [ "$UNITtest2" == "TB" ]; then
-	 factor2=$(echo "scale=0; 1000" | bc -l)
-	elif [ "$UNITtest2" == "GB" ]; then
-	 factor2=$(echo "scale=0; 100" | bc -l)
-	else
-	 factor2=$(echo "scale=0; 1" | bc -l)
-	fi
-
-	VOLCAPACITYF=$(echo "scale=0; $VOLCAPACITY*$factor" | bc -l)
-	VOLFREESIZEF=$(echo "scale=0; $VOLFREESIZE*$factor2" | bc -l)
-
-        VOLPCT=`echo "($VOLFREESIZEF*100)/$VOLCAPACITYF" | bc`
-
-        if [ "$VOLPCT" -le "$strCritical" ]; then
-                VOLPCT="CRITICAL: $VOLPCT"
-                CRITICAL=1
-        elif [ "$VOLPCT" -le "$strWarning" ]; then
-                VOLPCT="WARNING: $VOLPCT"
-                WARNING=1
-        fi
-
-        if [ "$VOL" -lt "$VOLCOUNT" ]; then
-           ALLOUTPUT="${ALLOUTPUT}Volume #${VOL}: $VOLSTAT, Total Size (bytes): $VOLCAPACITY $UNITtest, Free: $VOLFREESIZE $UNITtest2 (${VOLPCT}%), "
-        else
-           ALLOUTPUT="${ALLOUTPUT}Volume #${VOL}: $VOLSTAT, Total Size (bytes): $VOLCAPACITY $UNITtest, Free: $VOLFREESIZE $UNITtest2 (${VOLPCT}%)"
-        fi
-
-	#Performance Data
-        if [ $VOL -gt 1 ]; then
-          PERFOUTPUT=$PERFOUTPUT" "
-        fi
-        PERFOUTPUT=$PERFOUTPUT"FreeSize_Volume-$VOL=${VOLPCT}%;$strWarning;$strCritical;0;100"
-
-        VOL=`expr $VOL + 1`
-     done
-
-     echo $ALLOUTPUT"|"$PERFOUTPUT
-
-     if [ $CRITICAL -eq 1 ]; then
-        exit 2
-     elif [ $WARNING -eq 1 ]; then
-        exit 1
-     else
-        exit 0
-     fi
 
 # Power Supply Status  ----------------------------------------------------------------------------------------------------------------------------------
 elif [ "$strpart" == "powerstatus" ]; then
