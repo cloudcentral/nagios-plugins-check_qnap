@@ -28,7 +28,8 @@ usage() {
 	echo
 	echo "Usage: ${0##*/} [-V protocol] <hostname> <community> <part> <warning> <critical>"
 	echo
-	echo "Where: protocol - SNMP protocol version to use (1, 2c, 3); default: 2c"
+	echo "Where: -V - SNMP protocol version to use (1, 2c, 3); default: 2c"
+	echo "       -H - no human-readable output; do not use unit suffixes"
 	echo
 	echo "Parts are: status, sysinfo, systemuptime, temp, cpu, cputemp, freeram, powerstatus, fans, diskused, hdstatus, hd#status, hd#temp, volstatus (Raid Volume Status), vol#status"
 	echo
@@ -49,11 +50,14 @@ usage() {
 protocol="2c"
 secstropt="-c"
 
-while getopts 'V:?' opt
+while getopts 'HV:?' opt
 do
 	case "$opt" in
 		\?)
 			usage
+			;;
+		H)
+			inhuman=1
 			;;
 		V)
 			protocol="$OPTARG"
@@ -140,9 +144,15 @@ elif [ "$strpart" == "diskused" ]; then
 	freeH="$(echo "scale=2; $free/(2^$freeExp)" | bc -l)"
 	usedH="$(echo "scale=2; $used/(2^$diskExp)" | bc -l)"
 
-	diskF="$diskH$diskUnit"
-	freeF="$freeH$freeUnit"
-	usedF="$usedH$diskUnit"
+	if [ "${inhuman:-0}" -eq 1 ]; then
+		diskF="$disk"
+		freeF="$free"
+		usedF="$used"
+	else
+		diskF="$diskH$diskUnit"
+		freeF="$freeH$freeUnit"
+		usedF="$usedH$diskUnit"
+	fi
 
 	#wdisk=$(echo "scale=0; $strWarning*$disk/100" | bc -l)
 	#cdisk=$(echo "scale=0; $strCritical*$disk/100" | bc -l)
@@ -221,9 +231,15 @@ elif [ "$strpart" == "freeram" ]; then
 	freeMemH="$(echo "scale=1; $freeMem/(2^$freeMemExp)" | bc -l)"
 	usedMemH="$(echo "scale=1; $usedMem/(2^$freeMemExp)" | bc -l)"
 
-	totalMemF="$totalMemH$totalMemUnit"
-	freeMemF="$freeMemH$freeMemUnit"
-	usedMemF="$usedMemH$freeMemUnit"
+	if [ "${inhuman:-0}" -eq 1 ]; then
+		totalMemF="$totalMem"
+		freeMemF="$freeMem"
+		usedMemF="$usedMem"
+	else
+		totalMemF="$totalMemH$totalMemUnit"
+		freeMemF="$freeMemH$freeMemUnit"
+		usedMemF="$usedMemH$freeMemUnit"
+	fi
 
 	OUTPUT="Total:$totalMemF - Used:$usedMemF - Free:$freeMemF = $percMem%|Memory usage=$percMem%;$strWarning;$strCritical;0;100"
 
@@ -397,9 +413,15 @@ elif [ "$strpart" == "volstatus" ]; then
 		volFreeH="$(echo "scale=2; $volFree/(2^$volFreeExp)" | bc -l)"
 		volUsedH="$(echo "scale=2; $volUsed/(2^$volFreeExp)" | bc -l)"
 
-		volCpctF="$volCpctH $volCpctUnit"
-		volFreeF="$volFreeH $volFreeUnit"
-		volUsedF="$volUsedH $volFreeUnit"
+		if [ "${inhuman:-0}" -eq 1 ]; then
+			volCpctF="$volCpct"
+			volFreeF="$volFree"
+			volUsedF="$volUsed"
+		else
+			volCpctF="$volCpctH $volCpctUnit"
+			volFreeF="$volFreeH $volFreeUnit"
+			volUsedF="$volUsedH $volFreeUnit"
+		fi
 
 		if [ "$volFreePct" -le "$strCritical" ]; then
 			volFreePct="CRITICAL: $volFreePct"
