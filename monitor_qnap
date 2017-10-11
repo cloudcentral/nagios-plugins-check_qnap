@@ -22,8 +22,8 @@ then
 	exit 101
 fi
 
-OPTIONS='AvV:?'
-LONGOPTIONS='interval:,loop,snmp:,snmp-auth:,verbose'
+OPTIONS="A:V:v?"
+LONGOPTIONS="interval:,loop,snmp:,snmp-auth:,verbose"
 LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
 LONGOPTIONS="$LONGOPTIONS,memory,memory-free,memory-total,memory-used"
 LONGOPTIONS="$LONGOPTIONS,uptime,uptime-network,uptime-system"
