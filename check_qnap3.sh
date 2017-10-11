@@ -101,10 +101,11 @@ function _snmpstatus() {
 
 function _get_exp() {
 	case "$1" in
-		PB)	echo "40" ;;
-		TB)	echo "30" ;;
-		GB)	echo "20" ;;
-		MB)	echo "10" ;;
+		PB)	echo "50" ;;
+		TB)	echo "40" ;;
+		GB)	echo "30" ;;
+		MB)	echo "20" ;;
+		KB)	echo "10" ;;
 		'')	echo "0" ;;
 		*)	echo "ERROR: unknown unit '$1'" ;;
 	esac
