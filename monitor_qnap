@@ -28,7 +28,7 @@ LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
 LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-temp"
 LONGOPTIONS="$LONGOPTIONS,memory,memory-free,memory-total,memory-used"
 LONGOPTIONS="$LONGOPTIONS,uptime,uptime-network,uptime-system"
-LONGOPTIONS="$LONGOPTIONS,volume,volume-free,volume-total"
+LONGOPTIONS="$LONGOPTIONS,volume,volume-free,volume-total,volume-used"
 
 PARSED="$(getopt -o "$OPTIONS" -l "$LONGOPTIONS" -n "$0" -- "$@")"
 [ $? -ne 0 ] && usage
@@ -76,6 +76,8 @@ do
 			do_volume_free=1 ; shift ;;
 		--volume-total)
 			do_volume_total=1 ; shift ;;
+		--volume-used)
+			do_volume_used=1 ; shift ;;
 
 		# --------------------
 		--interval)
@@ -325,6 +327,22 @@ do_volume_total()
 	done
 }
 
+do_volume_used()
+{
+	for (( i=1; i <= "$(get_volume_count)"; i++ ))
+	do
+		if [ "$(get_volume_status "$i")" = 'Ready' ]
+		then
+			local f="$(get_volume_free "$i")"
+			local t="$(get_volume_total "$i")"
+			local u="$(echo "scale=0; $t - $f" | bc -l)"
+			local p="$(echo "scale=0; $u * 100 / $t" | bc -l)"
+			export_values "volume-$i.volume-used" "$u"
+			export_values "volume-$i.volume-used-percent" "$p"
+		fi
+	done
+}
+
 run_once()
 {
 	# Check if the target is reachable and answers to SNMP
@@ -346,6 +364,7 @@ run_once()
 	[ -n "$do_uptime_network" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_network
 	[ -n "$do_volume_free" -o -n "$do_volume" -o -n "$do_all" ] && do_volume_free
 	[ -n "$do_volume_total" -o -n "$do_volume" -o -n "$do_all" ] && do_volume_total
+	[ -n "$do_volume_used" -o -n "$do_volume" -o -n "$do_all" ] && do_volume_used
 }
 
 if $loop
