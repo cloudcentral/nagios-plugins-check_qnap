@@ -28,6 +28,7 @@ LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
 LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-temp"
 LONGOPTIONS="$LONGOPTIONS,memory,memory-free,memory-total,memory-used"
 LONGOPTIONS="$LONGOPTIONS,uptime,uptime-network,uptime-system"
+LONGOPTIONS="$LONGOPTIONS,volume,volume-free,volume-total"
 
 PARSED="$(getopt -o "$OPTIONS" -l "$LONGOPTIONS" -n "$0" -- "$@")"
 [ $? -ne 0 ] && usage
@@ -69,6 +70,12 @@ do
 			do_uptime_network=1 ; shift ;;
 		--uptime-system)
 			do_uptime_system=1 ; shift ;;
+		--volume)
+			do_volume=1 ; shift ;;
+		--volume-free)
+			do_volume_free=1 ; shift ;;
+		--volume-total)
+			do_volume_total=1 ; shift ;;
 
 		# --------------------
 		--interval)
@@ -274,6 +281,50 @@ do_uptime()
 	do_uptime_network
 }
 
+get_volume_count()
+{
+	echo "$(_snmpgetval .1.3.6.1.4.1.24681.1.2.16.0)"
+}
+
+get_volume_status()	# $1 - volume number
+{
+	echo "$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.17.1.6.$1" | sed -E 's/^"(.*)"$/\1/')"
+}
+
+get_volume_free()	# $1 - volume number
+{
+	local str="$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.17.1.5.$1")"
+	echo "$(get_base_size "$str")"
+}
+
+do_volume_free()
+{
+	for (( c=1; c <= "$(get_volume_count)"; c++ ))
+	do
+		if [ "$(get_volume_status "$c")" = 'Ready' ]
+		then
+			export_values "volume-$c.volume-free" "$(get_volume_free "$c")"
+		fi
+	done
+}
+
+get_volume_total()	# $1 - volume number
+{
+	local str="$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.17.1.4.$1")"
+	echo "$(get_base_size "$str")"
+}
+
+do_volume_total()
+{
+	for (( c=1; c <= "$(get_volume_count)"; c++ ))
+	do
+		if [ "$(get_volume_status "$c")" = 'Ready' ]
+		then
+			export_values "volume-$c.volume-total" "$(get_volume_total "$c")"
+		fi
+	done
+}
+
 run_once()
 {
 	# Check if the target is reachable and answers to SNMP
@@ -293,6 +344,8 @@ run_once()
 	[ -n "$do_memory_used" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_used
 	[ -n "$do_uptime_system" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_system
 	[ -n "$do_uptime_network" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_network
+	[ -n "$do_volume_free" -o -n "$do_volume" -o -n "$do_all" ] && do_volume_free
+	[ -n "$do_volume_total" -o -n "$do_volume" -o -n "$do_all" ] && do_volume_total
 }
 
 if $loop
