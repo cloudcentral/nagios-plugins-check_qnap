@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+#
+# monitor_qnap : mato [10-oct-2017]
+#
+# Check on a QNAP NAS appliance via SMTP
+#
+
+usage()
+{
+	echo "usage: ${0##*/} [<arg>...] host" >&2
+	echo "where: host -- QNAP server network name / address" >&2
+	echo "       -v   -- verbose output" >&2
+	echo "       -V|--snmp      -- SNMP protocol version to use (1, 2c, 3); default: 3" >&2
+	echo "       -A|--snmp-auth -- securityName (v.3) or community string (v.1/2c)" >&2
+	exit 100
+}
+
+getopt --test > /dev/null
+if [ $? -ne 4 ]
+then
+	echo "ERROR: enhanced getopt from util-linux required" >&2
+	exit 101
+fi
+
+OPTIONS='AvV:?'
+LONGOPTIONS='interval:,loop,snmp:,snmp-auth:,verbose'
+LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-temp,memory,memory-free,uptime,uptime-network,uptime-system"
+
+PARSED="$(getopt -o "$OPTIONS" -l "$LONGOPTIONS" -n "$0" -- "$@")"
+[ $? -ne 0 ] && usage
+eval set -- "$PARSED"
+
+loop=false
+protocol="3"
+secstropt="-u"
+verbose=0
+
+while true
+do
+	case "$1" in
+		--all)
+			do_all=1 ; shift ;;
+		--cpu)
+			do_cpu=1 ; shift ;;
+		--cpu-temp)
+			do_cpu_temp=1 ; shift ;;
+		--memory)
+			do_memory=1 ; shift ;;
+		--memory-free)
+			do_memory_free=1 ; shift ;;
+		--uptime)
+			do_uptime=1 ; shift ;;
+		--uptime-network)
+			do_uptime_network=1 ; shift ;;
+		--uptime-system)
+			do_uptime_system=1 ; shift ;;
+
+		# --------------------
+		--interval)
+			interval="$2"
+			shift 2
+			;;
+		--loop)
+			loop=true
+			shift
+			;;
+		-V|--snmp)
+			protocol="$2"
+			case "$protocol" in
+				3)
+					secstropt="-u"
+					;;
+				2c|1)
+					secstropt="-c"
+					;;
+				*)
+					echo "ERROR: wrong protocol version" >&2
+					exit 100
+					;;
+			esac
+			shift 2
+			;;
+		-A|--snmp-auth)
+			secstrval="$2"
+			shift 2
+			;;
+		-v|--verbose)
+			verbose=$((verbose+1))
+			shift
+			;;
+		-\?)
+			usage
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			echo "ERROR!" >&2
+			exit 123
+			;;
+	esac
+done
+
+[ $# -ne 1 ] && usage
+
+host="$1"
+
+_snmpget() {
+	snmpget -v $protocol $secstropt "$secstrval" "$host" "$@"
+}
+
+_snmpgetval() {
+	snmpget -v $protocol $secstropt "$secstrval" -Oqv "$host" "$@"
+}
+
+_snmpstatus() {
+	snmpstatus -v $protocol $secstropt "$secstrval" "$host" "$@"
+}
+
+get_exp() {
+	case "$1" in
+		PB)	echo "40" ;;
+		TB)	echo "30" ;;
+		GB)	echo "20" ;;
+		MB)	echo "10" ;;
+		'')	echo "0" ;;
+		*)	echo "ERROR: unknown unit '$1'" ;;
+	esac
+}
+
+qnap_interval_to_seconds()	# $1 - datetime interval in the format days:hours:minutes:seconds
+{
+	echo "$1" | sed -E 's/([0-9]+):([0-9]+):([0-9]+):([0-9.]+)/\1*24*60*60 + \2*60*60 + \3*60 + \4/' | bc -l
+}
+
+export_values()	# $1 - node, $2 - value
+{
+	prefix=qnap
+	echo "$prefix.$host.$1 $(date '+%s') $2"
+}
+
+do_cpu()
+{
+	local val="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.1.0 | sed -E 's/"([0-9.]+) ?%"/\1/')"
+	export_values cpu.cpu-busy "$val"
+}
+
+do_cpu_temp()
+{
+	local val="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.5.0 | sed -E 's/"([0-9.]+) ?C.*/\1/')"
+	export_values cpu.cpu-temp "$val"
+}
+
+do_memory_free()
+{
+	local str="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.3.0)"
+	local size="$(echo "$str" | sed -E 's/"([0-9.]+) ?.?B"/\1/')"
+	local unit="$(echo "$str" | sed -E 's/"[0-9.]+ ?(.?B)"/\1/')"
+	local exp="$(get_exp "$unit")"
+	local base="$(echo "scale=0; $size*(2^$exp)" | bc -l)"
+	export_values memory.memory-free "$base"
+}
+
+do_uptime_network()
+{
+	local str="$(_snmpgetval .1.3.6.1.2.1.1.3.0)"
+	local sec="$(qnap_interval_to_seconds "$str")"
+	export_values uptime.network "$sec"
+}
+
+do_uptime_system()
+{
+	local str="$(_snmpgetval .1.3.6.1.2.1.25.1.1.0)"
+	local sec="$(qnap_interval_to_seconds "$str")"
+	export_values uptime.system "$sec"
+}
+
+do_uptime()
+{
+	do_uptime_system
+	do_uptime_network
+}
+
+run_once()
+{
+	# Check if the target is reachable and answers to SNMP
+	status="$(_snmpstatus 2>&1)"
+	if [ $? -ne 0 ]
+	then
+		echo "$status" >&2
+		exit 1
+	fi
+
+	[ -n "$do_cpu" -o -n "$do_all" ] && do_cpu
+	[ -n "$do_cpu_temp" -o -n "$do_cpu" -o -n "$do_all" ] && do_cpu_temp
+	[ -n "$do_memory_free" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_free
+	[ -n "$do_uptime_system" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_system
+	[ -n "$do_uptime_network" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_network
+}
+
+if $loop
+then
+	echo "NOT IMPLEMENTED YET"
+	exit 1
+
+	HOSTNAME="${COLLECTD_HOSTNAME:-localhost}"
+	INTERVAL="${interval:-${COLLECTD_INTERVAL:-60}}"
+
+	while sleep "$INTERVAL"
+	do
+		# VALUE=do_magic()
+		echo "PUTVAL \"$HOSTNAME/exec-magic/gauge-magic_level\" interval=$INTERVAL N:$VALUE"
+	done
+else
+	run_once
+fi
+
+exit 0
+
+#
