@@ -203,11 +203,11 @@ get_disk_size()	# $1 - disk number
 
 do_disk_size()
 {
-	for (( c=1; c <= "$(get_disk_count)"; c++ ))
+	for (( i=1; i <= "$(get_disk_count)"; i++ ))
 	do
-		if [ "$(get_disk_status "$c")" != '--' ]
+		if [ "$(get_disk_status "$i")" != '--' ]
 		then
-			export_values "disk-$c.disk-size" "$(get_disk_size "$c")"
+			export_values "disk-$i.disk-size" "$(get_disk_size "$i")"
 		fi
 	done
 }
@@ -221,11 +221,11 @@ get_disk_temp()	# $1 - disk number
 
 do_disk_temp()
 {
-	for (( c=1; c <= "$(get_disk_count)"; c++ ))
+	for (( i=1; i <= "$(get_disk_count)"; i++ ))
 	do
-		if [ "$(get_disk_status "$c")" != '--' ]
+		if [ "$(get_disk_status "$i")" != '--' ]
 		then
-			export_values "disk-$c.disk-temp" "$(get_disk_temp "$c")"
+			export_values "disk-$i.disk-temp" "$(get_disk_temp "$i")"
 		fi
 	done
 }
@@ -299,11 +299,11 @@ get_volume_free()	# $1 - volume number
 
 do_volume_free()
 {
-	for (( c=1; c <= "$(get_volume_count)"; c++ ))
+	for (( i=1; i <= "$(get_volume_count)"; i++ ))
 	do
-		if [ "$(get_volume_status "$c")" = 'Ready' ]
+		if [ "$(get_volume_status "$i")" = 'Ready' ]
 		then
-			export_values "volume-$c.volume-free" "$(get_volume_free "$c")"
+			export_values "volume-$i.volume-free" "$(get_volume_free "$i")"
 		fi
 	done
 }
@@ -316,11 +316,11 @@ get_volume_total()	# $1 - volume number
 
 do_volume_total()
 {
-	for (( c=1; c <= "$(get_volume_count)"; c++ ))
+	for (( i=1; i <= "$(get_volume_count)"; i++ ))
 	do
-		if [ "$(get_volume_status "$c")" = 'Ready' ]
+		if [ "$(get_volume_status "$i")" = 'Ready' ]
 		then
-			export_values "volume-$c.volume-total" "$(get_volume_total "$c")"
+			export_values "volume-$i.volume-total" "$(get_volume_total "$i")"
 		fi
 	done
 }
