@@ -24,7 +24,8 @@ fi
 
 OPTIONS='AvV:?'
 LONGOPTIONS='interval:,loop,snmp:,snmp-auth:,verbose'
-LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-temp,memory,memory-free,uptime,uptime-network,uptime-system"
+LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-temp,memory,memory-free,memory-total,memory-used"
+LONGOPTIONS="$LONGOPTIONS,uptime,uptime-network,uptime-system"
 
 PARSED="$(getopt -o "$OPTIONS" -l "$LONGOPTIONS" -n "$0" -- "$@")"
 [ $? -ne 0 ] && usage
@@ -48,6 +49,10 @@ do
 			do_memory=1 ; shift ;;
 		--memory-free)
 			do_memory_free=1 ; shift ;;
+		--memory-total)
+			do_memory_total=1 ; shift ;;
+		--memory-used)
+			do_memory_used=1 ; shift ;;
 		--uptime)
 			do_uptime=1 ; shift ;;
 		--uptime-network)
@@ -131,6 +136,15 @@ get_exp()	# return base 2 exponent matching unit passed in $1
 	esac
 }
 
+get_base_size()	# $1 - size including unit (e.g. "123 MB")
+{
+	local size="$(echo "$1" | sed -E 's/"([0-9.]+) ?.?B"/\1/')"
+	local unit="$(echo "$1" | sed -E 's/"[0-9.]+ ?(.?B)"/\1/')"
+	local exp="$(get_exp "$unit")"
+	local base="$(echo "scale=0; $size*(2^$exp)" | bc -l)"
+	echo "$base"
+}
+
 qnap_interval_to_seconds()	# $1 - datetime interval in the format days:hours:minutes:seconds
 {
 	echo "$1" | sed -E 's/([0-9]+):([0-9]+):([0-9]+):([0-9.]+)/\1*24*60*60 + \2*60*60 + \3*60 + \4/' | bc -l
@@ -154,14 +168,36 @@ do_cpu_temp()
 	export_values cpu.cpu-temp "$val"
 }
 
-do_memory_free()
+get_memory_free()
 {
 	local str="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.3.0)"
-	local size="$(echo "$str" | sed -E 's/"([0-9.]+) ?.?B"/\1/')"
-	local unit="$(echo "$str" | sed -E 's/"[0-9.]+ ?(.?B)"/\1/')"
-	local exp="$(get_exp "$unit")"
-	local base="$(echo "scale=0; $size*(2^$exp)" | bc -l)"
-	export_values memory.memory-free "$base"
+	echo "$(get_base_size "$str")"
+}
+
+do_memory_free()
+{
+	export_values memory.memory-free "$(get_memory_free)"
+}
+
+get_memory_total()
+{
+	local str="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.2.0)"
+	echo "$(get_base_size "$str")"
+}
+
+do_memory_total()
+{
+	export_values memory.memory-total "$(get_memory_total)"
+}
+
+do_memory_used()
+{
+	local f="$(get_memory_free)"
+	local t="$(get_memory_total)"
+	local u="$(echo "scale=0; $t - $f" | bc -l)"
+	local p="$(echo "scale=0; $u * 100 / $t" | bc -l)"
+	export_values memory.memory-used "$u"
+	export_values memory.memory-used-percent "$p"
 }
 
 do_uptime_network()
@@ -197,6 +233,8 @@ run_once()
 	[ -n "$do_cpu" -o -n "$do_all" ] && do_cpu
 	[ -n "$do_cpu_temp" -o -n "$do_cpu" -o -n "$do_all" ] && do_cpu_temp
 	[ -n "$do_memory_free" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_free
+	[ -n "$do_memory_total" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_total
+	[ -n "$do_memory_used" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_used
 	[ -n "$do_uptime_system" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_system
 	[ -n "$do_uptime_network" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_network
 }
