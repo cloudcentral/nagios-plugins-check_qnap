@@ -35,6 +35,7 @@ OPTIONS="A:V:v?"
 LONGOPTIONS="interval:,loop,snmp:,snmp-auth:,verbose"
 LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
 LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-status,disk-temp,fan,fan-speed"
+LONGOPTIONS="$LONGOPTIONS,interface,interface-error,interface-rx,interface-tx"
 LONGOPTIONS="$LONGOPTIONS,memory,memory-free,memory-total,memory-used"
 LONGOPTIONS="$LONGOPTIONS,uptime,uptime-network,uptime-system"
 LONGOPTIONS="$LONGOPTIONS,volume,volume-free,volume-total,volume-used"
@@ -71,6 +72,14 @@ do
 			do_fan=1 ; shift ;;
 		--fan-speed)
 			do_fan_speed=1 ; shift ;;
+		--interface)
+			do_interface=1 ; shift ;;
+		--interface-error)
+			do_interface_error=1 ; shift ;;
+		--interface-rx)
+			do_interface_rx=1 ; shift ;;
+		--interface-tx)
+			do_interface_tx=1 ; shift ;;
 		--memory)
 			do_memory=1 ; shift ;;
 		--memory-free)
@@ -279,6 +288,50 @@ do_fan_speed()
 		export_values "fan-$i.fan-speed" "$(get_fan_speed "$i")"
 	done
 }
+
+get_interface_count()
+{
+	echo "$(_snmpgetval .1.3.6.1.4.1.24681.1.2.8.0)"
+}
+
+get_interface_packets_error()	# $1 - network interface number
+{
+	echo "$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.9.1.5.$1")"
+}
+
+do_interface_packets_error()
+{
+	for (( i=1; i <= "$(get_interface_count)"; i++ ))
+	do
+		export_values "interface-$i.packets.error" "$(get_interface_packets_error "$i")"
+	done
+}
+
+get_interface_packets_rx()	# $1 - network interface number
+{
+	echo "$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.9.1.3.$1")"
+}
+
+do_interface_packets_rx()
+{
+	for (( i=1; i <= "$(get_interface_count)"; i++ ))
+	do
+		export_values "interface-$i.packets.rx" "$(get_interface_packets_rx "$i")"
+	done
+}
+
+get_interface_packets_tx()	# $1 - network interface number
+{
+	echo "$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.9.1.4.$1")"
+}
+
+do_interface_packets_tx()
+{
+	for (( i=1; i <= "$(get_interface_count)"; i++ ))
+	do
+		export_values "interface-$i.packets.tx" "$(get_interface_packets_tx "$i")"
+	done
+}
 get_memory_free()
 {
 	local str="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.3.0)"
@@ -407,6 +460,9 @@ run_once()
 	[ -n "$do_disk_status" -o -n "$do_disk" -o -n "$do_all" ] && do_disk_status
 	[ -n "$do_disk_temp" -o -n "$do_disk" -o -n "$do_all" ] && do_disk_temp
 	[ -n "$do_fan_speed" -o -n "$do_fan" -o -n "$do_all" ] && do_fan_speed
+	[ -n "$do_interface_error" -o -n "$do_interface" -o -n "$do_all" ] && do_interface_packets_error
+	[ -n "$do_interface_rx" -o -n "$do_interface" -o -n "$do_all" ] && do_interface_packets_rx
+	[ -n "$do_interface_tx" -o -n "$do_interface" -o -n "$do_all" ] && do_interface_packets_tx
 	[ -n "$do_memory_free" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_free
 	[ -n "$do_memory_total" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_total
 	[ -n "$do_memory_used" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_used
