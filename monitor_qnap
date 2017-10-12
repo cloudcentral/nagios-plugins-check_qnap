@@ -25,7 +25,7 @@ fi
 OPTIONS="A:V:v?"
 LONGOPTIONS="interval:,loop,snmp:,snmp-auth:,verbose"
 LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
-LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-temp"
+LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-status,disk-temp"
 LONGOPTIONS="$LONGOPTIONS,memory,memory-free,memory-total,memory-used"
 LONGOPTIONS="$LONGOPTIONS,uptime,uptime-network,uptime-system"
 LONGOPTIONS="$LONGOPTIONS,volume,volume-free,volume-total,volume-used"
@@ -54,6 +54,8 @@ do
 			do_disk=1 ; shift ;;
 		--disk-size)
 			do_disk_size=1 ; shift ;;
+		--disk-status)
+			do_disk_status=1 ; shift ;;
 		--disk-temp)
 			do_disk_temp=1 ; shift ;;
 		--memory)
@@ -192,9 +194,22 @@ get_disk_count()
 	echo "$(_snmpgetval .1.3.6.1.4.1.24681.1.2.10.0)"
 }
 
-get_disk_status()	# $1 - disk number
+get_disk_smart_info()	# $1 - disk number
 {
 	echo "$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.11.1.7.$1" | sed -E 's/^"(.*)"$/\1/')"
+}
+
+get_disk_status()	# $1 - disk number
+{
+	echo "$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.11.1.4.$1" | sed -E 's/^"(.*)"$/\1/')"
+}
+
+do_disk_status()
+{
+	for (( i=1; i <= "$(get_disk_count)"; i++ ))
+	do
+		export_values "disk-$i.disk-status" "$(get_disk_status "$i")"
+	done
 }
 
 get_disk_size()	# $1 - disk number
@@ -207,7 +222,7 @@ do_disk_size()
 {
 	for (( i=1; i <= "$(get_disk_count)"; i++ ))
 	do
-		if [ "$(get_disk_status "$i")" != '--' ]
+		if [ "$(get_disk_smart_info "$i")" != '--' ]
 		then
 			export_values "disk-$i.disk-size" "$(get_disk_size "$i")"
 		fi
@@ -225,7 +240,7 @@ do_disk_temp()
 {
 	for (( i=1; i <= "$(get_disk_count)"; i++ ))
 	do
-		if [ "$(get_disk_status "$i")" != '--' ]
+		if [ "$(get_disk_smart_info "$i")" != '--' ]
 		then
 			export_values "disk-$i.disk-temp" "$(get_disk_temp "$i")"
 		fi
@@ -356,6 +371,7 @@ run_once()
 	[ -n "$do_cpu_busy" -o -n "$do_cpu" -o -n "$do_all" ] && do_cpu_busy
 	[ -n "$do_cpu_temp" -o -n "$do_cpu" -o -n "$do_all" ] && do_cpu_temp
 	[ -n "$do_disk_size" -o -n "$do_disk" -o -n "$do_all" ] && do_disk_size
+	[ -n "$do_disk_status" -o -n "$do_disk" -o -n "$do_all" ] && do_disk_status
 	[ -n "$do_disk_temp" -o -n "$do_disk" -o -n "$do_all" ] && do_disk_temp
 	[ -n "$do_memory_free" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_free
 	[ -n "$do_memory_total" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_total
