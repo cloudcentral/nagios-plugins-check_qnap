@@ -8,10 +8,19 @@
 usage()
 {
 	echo "usage: ${0##*/} [<arg>...] host" >&2
+	echo >&2
 	echo "where: host -- QNAP server network name / address" >&2
-	echo "       -v   -- verbose output" >&2
+	echo >&2
+	echo "       --all    -- get all available metrics" >&2
+	echo "       --cpu    -- get all cpu-* metrics" >&2
+	echo "       --disk   -- get all disk-* metrics" >&2
+	echo "       --memory -- get all memory-* metrics" >&2
+	echo "       --uptime -- get all uptime-* metrics" >&2
+	echo "       --volume -- get all volume-* metrics" >&2
+	echo >&2
 	echo "       -V|--snmp      -- SNMP protocol version to use (1, 2c, 3); default: 3" >&2
-	echo "       -A|--snmp-auth -- securityName (v.3) or community string (v.1/2c)" >&2
+	echo "       -A|--snmp-auth -- security name (v.3) or community name (v.1/2c)" >&2
+	echo "       -v|--verbose   -- verbose output" >&2
 	exit 100
 }
 
