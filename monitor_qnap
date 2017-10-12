@@ -34,7 +34,7 @@ fi
 OPTIONS="A:V:v?"
 LONGOPTIONS="interval:,loop,snmp:,snmp-auth:,verbose"
 LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
-LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-status,disk-temp"
+LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-status,disk-temp,fan,fan-speed"
 LONGOPTIONS="$LONGOPTIONS,memory,memory-free,memory-total,memory-used"
 LONGOPTIONS="$LONGOPTIONS,uptime,uptime-network,uptime-system"
 LONGOPTIONS="$LONGOPTIONS,volume,volume-free,volume-total,volume-used"
@@ -67,6 +67,10 @@ do
 			do_disk_status=1 ; shift ;;
 		--disk-temp)
 			do_disk_temp=1 ; shift ;;
+		--fan)
+			do_fan=1 ; shift ;;
+		--fan-speed)
+			do_fan_speed=1 ; shift ;;
 		--memory)
 			do_memory=1 ; shift ;;
 		--memory-free)
@@ -255,6 +259,26 @@ do_disk_temp()
 		fi
 	done
 }
+
+get_fan_count()
+{
+	echo "$(_snmpgetval .1.3.6.1.4.1.24681.1.2.14.0)"
+}
+
+get_fan_speed()	# $1 - fan number
+{
+	local str="$(_snmpgetval ".1.3.6.1.4.1.24681.1.2.15.1.3.$1")"
+	local val="$(echo "$str" | sed -E 's/"([0-9]+) ?RPM"/\1/')"
+	echo "$val"
+}
+
+do_fan_speed()
+{
+	for (( i=1; i <= "$(get_fan_count)"; i++ ))
+	do
+		export_values "fan-$i.fan-speed" "$(get_fan_speed "$i")"
+	done
+}
 get_memory_free()
 {
 	local str="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.3.0)"
@@ -382,6 +406,7 @@ run_once()
 	[ -n "$do_disk_size" -o -n "$do_disk" -o -n "$do_all" ] && do_disk_size
 	[ -n "$do_disk_status" -o -n "$do_disk" -o -n "$do_all" ] && do_disk_status
 	[ -n "$do_disk_temp" -o -n "$do_disk" -o -n "$do_all" ] && do_disk_temp
+	[ -n "$do_fan_speed" -o -n "$do_fan" -o -n "$do_all" ] && do_fan_speed
 	[ -n "$do_memory_free" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_free
 	[ -n "$do_memory_total" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_total
 	[ -n "$do_memory_used" -o -n "$do_memory" -o -n "$do_all" ] && do_memory_used
