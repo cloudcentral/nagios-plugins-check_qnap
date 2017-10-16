@@ -17,7 +17,7 @@ usage()
 	echo "       --interface -- get all interface-* metrics" >&2
 	echo "       --memory    -- get all memory-* metrics" >&2
 	echo "       --network   -- get all network-* metrics" >&2
-	echo "       --uptime    -- get all uptime-* metrics" >&2
+	echo "       --system    -- get all system-* metrics" >&2
 	echo "       --volume    -- get all volume-* metrics" >&2
 	echo >&2
 	echo "       -V|--snmp      -- SNMP protocol version to use (1, 2c, 3); default: 3" >&2
@@ -39,8 +39,8 @@ LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
 LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-status,disk-temp,fan,fan-speed"
 LONGOPTIONS="$LONGOPTIONS,interface,interface-error,interface-rx,interface-tx"
 LONGOPTIONS="$LONGOPTIONS,memory,memory-free,memory-total,memory-used"
-LONGOPTIONS="$LONGOPTIONS,network,network-error,network-rx,network-tx"
-LONGOPTIONS="$LONGOPTIONS,system,system-temp,uptime,uptime-network,uptime-system"
+LONGOPTIONS="$LONGOPTIONS,network,network-error,network-rx,network-tx,network-uptime"
+LONGOPTIONS="$LONGOPTIONS,system,system-temp,system-uptime"
 LONGOPTIONS="$LONGOPTIONS,volume,volume-free,volume-total,volume-used"
 
 PARSED="$(getopt -o "$OPTIONS" -l "$LONGOPTIONS" -n "$0" -- "$@")"
@@ -100,16 +100,14 @@ do
 			do_network_rx=1 ; shift ;;
 		--network-tx)
 			do_network_tx=1 ; shift ;;
+		--network-uptime)
+			do_network_uptime=1 ; shift ;;
 		--system)
 			do_system=1 ; shift ;;
 		--system-temp)
 			do_system_temp=1 ; shift ;;
-		--uptime)
-			do_uptime=1 ; shift ;;
-		--uptime-network)
-			do_uptime_network=1 ; shift ;;
-		--uptime-system)
-			do_uptime_system=1 ; shift ;;
+		--system-uptime)
+			do_system_uptime=1 ; shift ;;
 		--volume)
 			do_volume=1 ; shift ;;
 		--volume-free)
@@ -424,6 +422,13 @@ do_network_packets_tx()
 	export_values network.packets.tx "$c"
 }
 
+do_network_uptime()
+{
+	local str="$(_snmpgetval .1.3.6.1.2.1.1.3.0)"
+	local sec="$(qnap_interval_to_seconds "$str")"
+	export_values network.uptime "$sec"
+}
+
 # --system ...................................................................
 
 do_system_temp()
@@ -433,26 +438,11 @@ do_system_temp()
 	export_values system.system-temp "$val"
 }
 
-# --uptime ...................................................................
-
-do_uptime_network()
-{
-	local str="$(_snmpgetval .1.3.6.1.2.1.1.3.0)"
-	local sec="$(qnap_interval_to_seconds "$str")"
-	export_values uptime.network "$sec"
-}
-
-do_uptime_system()
+do_system_uptime()
 {
 	local str="$(_snmpgetval .1.3.6.1.2.1.25.1.1.0)"
 	local sec="$(qnap_interval_to_seconds "$str")"
-	export_values uptime.system "$sec"
-}
-
-do_uptime()
-{
-	do_uptime_system
-	do_uptime_network
+	export_values system.system-uptime "$sec"
 }
 
 # --volume ...................................................................
@@ -545,9 +535,9 @@ run_once()
 	[ -n "$do_network_error" -o -n "$do_network" -o -n "$do_all" ] && do_network_packets_error
 	[ -n "$do_network_rx" -o -n "$do_network" -o -n "$do_all" ] && do_network_packets_rx
 	[ -n "$do_network_tx" -o -n "$do_network" -o -n "$do_all" ] && do_network_packets_tx
+	[ -n "$do_network_uptime" -o -n "$do_network" -o -n "$do_all" ] && do_network_uptime
 	[ -n "$do_system_temp" -o -n "$do_system" -o -n "$do_all" ] && do_system_temp
-	[ -n "$do_uptime_system" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_system
-	[ -n "$do_uptime_network" -o -n "$do_uptime" -o -n "$do_all" ] && do_uptime_network
+	[ -n "$do_system_uptime" -o -n "$do_system" -o -n "$do_all" ] && do_system_uptime
 	[ -n "$do_volume_free" -o -n "$do_volume" -o -n "$do_all" ] && do_volume_free
 	[ -n "$do_volume_total" -o -n "$do_volume" -o -n "$do_all" ] && do_volume_total
 	[ -n "$do_volume_used" -o -n "$do_volume" -o -n "$do_all" ] && do_volume_used
