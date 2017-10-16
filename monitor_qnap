@@ -235,7 +235,7 @@ export_metric()	# $1 - node, $2 - value
 			echo "$prefix.$output_host.$1 $2 $(date '+%s')"
 			;;
 		collectd)
-			local path="$(echo "$1" | tr '.' '/')"
+			local path="$(echo "$1" | sed -E -e 's/^([^.]+)\.(.+)$/\1\/\2/' -e 's/\./-/g')"
 			echo "PUTVAL $output_host/$path N:$2"
 			;;
 		*)
