@@ -35,7 +35,7 @@ then
 fi
 
 OPTIONS="A:o:V:v?"
-LONGOPTIONS="interval:,loop,output:,snmp:,snmp-auth:,verbose"
+LONGOPTIONS="interval:,loop,output:,output-host:,snmp:,snmp-auth:,verbose"
 LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
 LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-status,disk-temp,fan,fan-speed"
 LONGOPTIONS="$LONGOPTIONS,interface,interface-error,interface-rx,interface-tx"
@@ -138,6 +138,10 @@ do
 			esac
 			shift 2
 			;;
+		--output-host)
+			output_host="$2"
+			shift 2
+			;;
 		-V|--snmp)
 			protocol="$2"
 			case "$protocol" in
@@ -179,6 +183,8 @@ done
 [ $# -ne 1 ] && usage
 
 host="$1"
+[ -z "$output_host" ] && output_host="$host"
+output_host="$(echo "$output_host" | sed -E 's/[^-_A-Za-z0-9]/_/g')"
 
 # helper functions ...........................................................
 
@@ -226,14 +232,14 @@ export_metric()	# $1 - node, $2 - value
 	case "$output" in
 		graphite)
 			local prefix=qnap
-			echo "$prefix.$host.$1 $(date '+%s') $2"
+			echo "$prefix.$output_host.$1 $(date '+%s') $2"
 			;;
 		collectd)
 			local path="$(echo "$1" | tr '.' '/')"
-			echo "PUTVAL $host/$path N:$2"
+			echo "PUTVAL $output_host/$path N:$2"
 			;;
 		*)
-			echo "$host.$1 $2"
+			echo "$output_host.$1 $2"
 			;;
 	esac
 }
