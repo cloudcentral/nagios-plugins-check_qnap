@@ -220,8 +220,10 @@ export_metric()	# $1 - node, $2 - value
 			echo "$prefix.$output_host.$1 $2 $(date '+%s')"
 			;;
 		collectd)
+			local opts
+			[ -n "$interval" ] && opts="$opts interval=$interval"
 			local path="$(echo "$1" | sed -E -e 's/^([^.]+)\.(.+)$/\1\/\2/' -e 's/\./-/g')"
-			echo "PUTVAL $output_host/$path N:$2"
+			echo "PUTVAL \"$output_host/$path\"$opts N:$2"
 			;;
 		*)
 			echo "$output_host.$1 $2"
@@ -560,16 +562,16 @@ run_once()
 
 if $loop
 then
-	echo "NOT IMPLEMENTED YET"
-	exit 1
+	if [ "$output" = "collectd" ]
+	then
+		interval="${interval:-${COLLECTD_INTERVAL:-60}}"
+	else
+		interval="${interval:-60}"
+	fi
 
-	HOSTNAME="${COLLECTD_HOSTNAME:-localhost}"
-	INTERVAL="${interval:-${COLLECTD_INTERVAL:-60}}"
-
-	while sleep "$INTERVAL"
+	while sleep "$interval"
 	do
-		# VALUE=do_magic()
-		echo "PUTVAL \"$HOSTNAME/exec-magic/gauge-magic_level\" interval=$INTERVAL N:$VALUE"
+		run_once
 	done
 else
 	run_once
