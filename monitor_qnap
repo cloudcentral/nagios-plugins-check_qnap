@@ -120,12 +120,10 @@ do
 		# general options ..........................
 		--interval)
 			interval="$2"
-			shift 2
-			;;
+			shift 2 ;;
 		--loop)
 			loop=true
-			shift
-			;;
+			shift ;;
 		-o|--output)
 			output="$2"
 			case "$output" in
@@ -133,50 +131,37 @@ do
 				collectd)	;;
 				*)
 					echo "ERROR: wrong output format" >&2
-					exit 100
-					;;
+					exit 100 ;;
 			esac
-			shift 2
-			;;
+			shift 2 ;;
 		--output-host)
 			output_host="$2"
-			shift 2
-			;;
+			shift 2 ;;
 		-V|--snmp)
 			protocol="$2"
 			case "$protocol" in
 				3)
-					secstropt="-u"
-					;;
+					secstropt="-u" ;;
 				2c|1)
-					secstropt="-c"
-					;;
+					secstropt="-c" ;;
 				*)
 					echo "ERROR: wrong protocol version" >&2
-					exit 100
-					;;
+					exit 100 ;;
 			esac
-			shift 2
-			;;
+			shift 2 ;;
 		-A|--snmp-auth)
 			secstrval="$2"
-			shift 2
-			;;
+			shift 2 ;;
 		-v|--verbose)
 			verbose=$((verbose+1))
-			shift
-			;;
+			shift ;;
 		-\?)
-			usage
-			;;
+			usage ;;
 		--)
-			shift
-			break
-			;;
+			shift ; break ;;
 		*)
 			echo "ERROR!" >&2
-			exit 123
-			;;
+			exit 123 ;;
 	esac
 done
 
