@@ -20,6 +20,7 @@ usage()
 	echo "       --system    -- get all system-* metrics" >&2
 	echo "       --volume    -- get all volume-* metrics" >&2
 	echo >&2
+	echo "       -o|--output    -- output format (graphite, collectd)" >&2
 	echo "       -V|--snmp      -- SNMP protocol version to use (1, 2c, 3); default: 3" >&2
 	echo "       -A|--snmp-auth -- security name (v.3) or community name (v.1/2c)" >&2
 	echo "       -v|--verbose   -- verbose output" >&2
@@ -33,8 +34,8 @@ then
 	exit 101
 fi
 
-OPTIONS="A:V:v?"
-LONGOPTIONS="interval:,loop,snmp:,snmp-auth:,verbose"
+OPTIONS="A:o:V:v?"
+LONGOPTIONS="interval:,loop,output:,snmp:,snmp-auth:,verbose"
 LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
 LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-status,disk-temp,fan,fan-speed"
 LONGOPTIONS="$LONGOPTIONS,interface,interface-error,interface-rx,interface-tx"
@@ -125,6 +126,18 @@ do
 			loop=true
 			shift
 			;;
+		-o|--output)
+			output="$2"
+			case "$output" in
+				graphite)	;;
+				collectd)	;;
+				*)
+					echo "ERROR: wrong output format" >&2
+					exit 100
+					;;
+			esac
+			shift 2
+			;;
 		-V|--snmp)
 			protocol="$2"
 			case "$protocol" in
@@ -208,10 +221,21 @@ qnap_interval_to_seconds()	# $1 - datetime interval in the format days:hours:min
 	echo "$1" | sed -E 's/([0-9]+):([0-9]+):([0-9]+):([0-9.]+)/\1*24*60*60 + \2*60*60 + \3*60 + \4/' | bc -l
 }
 
-export_values()	# $1 - node, $2 - value
+export_metric()	# $1 - node, $2 - value
 {
-	prefix=qnap
-	echo "$prefix.$host.$1 $(date '+%s') $2"
+	case "$output" in
+		graphite)
+			local prefix=qnap
+			echo "$prefix.$host.$1 $(date '+%s') $2"
+			;;
+		collectd)
+			local path="$(echo "$1" | tr '.' '/')"
+			echo "PUTVAL $host/$path N:$2"
+			;;
+		*)
+			echo "$host.$1 $2"
+			;;
+	esac
 }
 
 # --cpu ......................................................................
@@ -219,13 +243,13 @@ export_values()	# $1 - node, $2 - value
 do_cpu_busy()
 {
 	local val="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.1.0 | sed -E 's/"([0-9.]+) ?%"/\1/')"
-	export_values cpu.cpu-busy "$val"
+	export_metric cpu.cpu-busy "$val"
 }
 
 do_cpu_temp()
 {
 	local val="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.5.0 | sed -E 's/"([0-9.]+) ?C.*/\1/')"
-	export_values cpu.cpu-temp "$val"
+	export_metric cpu.cpu-temp "$val"
 }
 
 # --disk .....................................................................
@@ -249,7 +273,7 @@ do_disk_status()
 {
 	for (( i=1; i <= "$(get_disk_count)"; i++ ))
 	do
-		export_values "disk-$i.disk-status" "$(get_disk_status "$i")"
+		export_metric "disk-$i.disk-status" "$(get_disk_status "$i")"
 	done
 }
 
@@ -265,7 +289,7 @@ do_disk_size()
 	do
 		if [ "$(get_disk_smart_info "$i")" != '--' ]
 		then
-			export_values "disk-$i.disk-size" "$(get_disk_size "$i")"
+			export_metric "disk-$i.disk-size" "$(get_disk_size "$i")"
 		fi
 	done
 }
@@ -283,7 +307,7 @@ do_disk_temp()
 	do
 		if [ "$(get_disk_smart_info "$i")" != '--' ]
 		then
-			export_values "disk-$i.disk-temp" "$(get_disk_temp "$i")"
+			export_metric "disk-$i.disk-temp" "$(get_disk_temp "$i")"
 		fi
 	done
 }
@@ -306,7 +330,7 @@ do_fan_speed()
 {
 	for (( i=1; i <= "$(get_fan_count)"; i++ ))
 	do
-		export_values "fan-$i.fan-speed" "$(get_fan_speed "$i")"
+		export_metric "fan-$i.fan-speed" "$(get_fan_speed "$i")"
 	done
 }
 
@@ -326,7 +350,7 @@ do_interface_packets_error()
 {
 	for (( i=1; i <= "$(get_interface_count)"; i++ ))
 	do
-		export_values "interface-$i.packets.error" "$(get_interface_packets_error "$i")"
+		export_metric "interface-$i.packets.error" "$(get_interface_packets_error "$i")"
 	done
 }
 
@@ -339,7 +363,7 @@ do_interface_packets_rx()
 {
 	for (( i=1; i <= "$(get_interface_count)"; i++ ))
 	do
-		export_values "interface-$i.packets.rx" "$(get_interface_packets_rx "$i")"
+		export_metric "interface-$i.packets.rx" "$(get_interface_packets_rx "$i")"
 	done
 }
 
@@ -352,7 +376,7 @@ do_interface_packets_tx()
 {
 	for (( i=1; i <= "$(get_interface_count)"; i++ ))
 	do
-		export_values "interface-$i.packets.tx" "$(get_interface_packets_tx "$i")"
+		export_metric "interface-$i.packets.tx" "$(get_interface_packets_tx "$i")"
 	done
 }
 
@@ -366,7 +390,7 @@ get_memory_free()
 
 do_memory_free()
 {
-	export_values memory.memory-free "$(get_memory_free)"
+	export_metric memory.memory-free "$(get_memory_free)"
 }
 
 get_memory_total()
@@ -377,7 +401,7 @@ get_memory_total()
 
 do_memory_total()
 {
-	export_values memory.memory-total "$(get_memory_total)"
+	export_metric memory.memory-total "$(get_memory_total)"
 }
 
 do_memory_used()
@@ -386,8 +410,8 @@ do_memory_used()
 	local t="$(get_memory_total)"
 	local u="$(echo "scale=0; $t - $f" | bc -l)"
 	local p="$(echo "scale=0; $u * 100 / $t" | bc -l)"
-	export_values memory.memory-used "$u"
-	export_values memory.memory-used-percent "$p"
+	export_metric memory.memory-used "$u"
+	export_metric memory.memory-used-percent "$p"
 }
 
 # --network ..................................................................
@@ -399,7 +423,7 @@ do_network_packets_error()
 	do
 		(( c += "$(get_interface_packets_error "$i")" ))
 	done
-	export_values network.packets.error "$c"
+	export_metric network.packets.error "$c"
 }
 
 do_network_packets_rx()
@@ -409,7 +433,7 @@ do_network_packets_rx()
 	do
 		(( c += "$(get_interface_packets_rx "$i")" ))
 	done
-	export_values network.packets.rx "$c"
+	export_metric network.packets.rx "$c"
 }
 
 do_network_packets_tx()
@@ -419,14 +443,14 @@ do_network_packets_tx()
 	do
 		(( c += "$(get_interface_packets_tx "$i")" ))
 	done
-	export_values network.packets.tx "$c"
+	export_metric network.packets.tx "$c"
 }
 
 do_network_uptime()
 {
 	local str="$(_snmpgetval .1.3.6.1.2.1.1.3.0)"
 	local sec="$(qnap_interval_to_seconds "$str")"
-	export_values network.uptime "$sec"
+	export_metric network.uptime "$sec"
 }
 
 # --system ...................................................................
@@ -435,14 +459,14 @@ do_system_temp()
 {
 	local str="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.6.0)"
 	local val="$(echo "$str" | sed -E 's/"([0-9.]+) ?C.*/\1/')"
-	export_values system.system-temp "$val"
+	export_metric system.system-temp "$val"
 }
 
 do_system_uptime()
 {
 	local str="$(_snmpgetval .1.3.6.1.2.1.25.1.1.0)"
 	local sec="$(qnap_interval_to_seconds "$str")"
-	export_values system.system-uptime "$sec"
+	export_metric system.system-uptime "$sec"
 }
 
 # --volume ...................................................................
@@ -469,7 +493,7 @@ do_volume_free()
 	do
 		if [ "$(get_volume_status "$i")" = 'Ready' ]
 		then
-			export_values "volume-$i.volume-free" "$(get_volume_free "$i")"
+			export_metric "volume-$i.volume-free" "$(get_volume_free "$i")"
 		fi
 	done
 }
@@ -486,7 +510,7 @@ do_volume_total()
 	do
 		if [ "$(get_volume_status "$i")" = 'Ready' ]
 		then
-			export_values "volume-$i.volume-total" "$(get_volume_total "$i")"
+			export_metric "volume-$i.volume-total" "$(get_volume_total "$i")"
 		fi
 	done
 }
@@ -501,8 +525,8 @@ do_volume_used()
 			local t="$(get_volume_total "$i")"
 			local u="$(echo "scale=0; $t - $f" | bc -l)"
 			local p="$(echo "scale=0; $u * 100 / $t" | bc -l)"
-			export_values "volume-$i.volume-used" "$u"
-			export_values "volume-$i.volume-used-percent" "$p"
+			export_metric "volume-$i.volume-used" "$u"
+			export_metric "volume-$i.volume-used-percent" "$p"
 		fi
 	done
 }
