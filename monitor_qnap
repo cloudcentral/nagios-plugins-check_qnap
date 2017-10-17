@@ -134,7 +134,7 @@ do
 				graphite)	;;
 				collectd)	;;
 				*)
-					echo "ERROR: wrong output format" >&2
+					echo "ERROR: wrong output format: $output" >&2
 					exit 100 ;;
 			esac
 			shift 2 ;;
@@ -149,7 +149,7 @@ do
 				2c|1)
 					secstropt="-c" ;;
 				*)
-					echo "ERROR: wrong protocol version" >&2
+					echo "ERROR: wrong protocol version: $protocol" >&2
 					exit 100 ;;
 			esac
 			shift 2 ;;
