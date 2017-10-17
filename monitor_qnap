@@ -14,13 +14,17 @@ usage()
 	echo "       --all       -- get all available metrics" >&2
 	echo "       --cpu       -- get all cpu-* metrics" >&2
 	echo "       --disk      -- get all disk-* metrics" >&2
+	echo "       --fan       -- get all fan-* metrics" >&2
 	echo "       --interface -- get all interface-* metrics" >&2
 	echo "       --memory    -- get all memory-* metrics" >&2
 	echo "       --network   -- get all network-* metrics" >&2
 	echo "       --system    -- get all system-* metrics" >&2
 	echo "       --volume    -- get all volume-* metrics" >&2
 	echo >&2
+	echo "       --interval     -- loop interval in seconds" >&2
+	echo "       --loop         -- do not exit but run in loop" >&2
 	echo "       -o|--output    -- output format (graphite, collectd)" >&2
+	echo "       --output-host  -- host name to use in output instead of the host arg" >&2
 	echo "       -V|--snmp      -- SNMP protocol version to use (1, 2c, 3); default: 3" >&2
 	echo "       -A|--snmp-auth -- security name (v.3) or community name (v.1/2c)" >&2
 	echo "       -v|--verbose   -- verbose output" >&2
