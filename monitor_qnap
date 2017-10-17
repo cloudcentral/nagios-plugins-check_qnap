@@ -40,6 +40,7 @@ fi
 
 OPTIONS="A:o:V:v?"
 LONGOPTIONS="interval:,loop,output:,output-host:,snmp:,snmp-auth:,verbose"
+LONGOPTIONS="$LONGOPTIONS,graphite-prefix:"
 LONGOPTIONS="$LONGOPTIONS,all,cpu,cpu-busy,cpu-temp"
 LONGOPTIONS="$LONGOPTIONS,disk,disk-size,disk-status,disk-temp,fan,fan-speed"
 LONGOPTIONS="$LONGOPTIONS,interface,interface-error,interface-rx,interface-tx"
@@ -121,6 +122,10 @@ do
 			do_volume_total=1 ; shift ;;
 		--volume-used)
 			do_volume_used=1 ; shift ;;
+		# graphite options ..........................
+		--graphite-prefix)
+			graphite_prefix="$2"
+			shift 2 ;;
 		# general options ..........................
 		--interval)
 			interval="$2"
@@ -174,6 +179,7 @@ done
 host="$1"
 [ -z "$output_host" ] && output_host="$host"
 output_host="$(echo "$output_host" | sed -E 's/[^-_A-Za-z0-9]/_/g')"
+[ -z "$graphite_prefix" ] && graphite_prefix="qnap"
 
 # helper functions ...........................................................
 
@@ -220,8 +226,7 @@ export_metric()	# $1 - node, $2 - value
 {
 	case "$output" in
 		graphite)
-			local prefix=qnap
-			echo "$prefix.$output_host.$1 $2 $(date '+%s')"
+			echo "$graphite_prefix.$output_host.$1 $2 $(date '+%s')"
 			;;
 		collectd)
 			local opts
