@@ -240,6 +240,17 @@ export_metric()	# $1 - node, $2 - value
 	esac
 }
 
+output_comment()
+{
+	case "$output" in
+		graphite|collectd)
+			;;
+		*)
+			echo "$@"
+			;;
+	esac
+}
+
 # --cpu ......................................................................
 
 do_cpu_busy()
@@ -581,7 +592,7 @@ then
 	while true
 	do
 		tick="$(date '+%s')"
-		echo "# $(date +'%Y-%m-%d %T')"
+		output_comment "# $(date +'%Y-%m-%d %T')"
 		run_once
 
 		while (( "$(date '+%s')" < "$tick" + "$interval" ))
