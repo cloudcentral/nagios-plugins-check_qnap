@@ -569,10 +569,16 @@ then
 		interval="${interval:-60}"
 	fi
 
-	while sleep "$interval"
+	while true
 	do
+		tick="$(date '+%s')"
 		echo "# $(date +'%Y-%m-%d %T')"
 		run_once
+
+		while (( "$(date '+%s')" < "$tick" + "$interval" ))
+		do
+			sleep 1
+		done
 	done
 else
 	run_once
