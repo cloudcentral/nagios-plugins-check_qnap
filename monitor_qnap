@@ -571,6 +571,7 @@ then
 
 	while sleep "$interval"
 	do
+		echo "# $(date +'%Y-%m-%d %T')"
 		run_once
 	done
 else
