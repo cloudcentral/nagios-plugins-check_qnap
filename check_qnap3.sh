@@ -151,9 +151,9 @@ while true; do
       ;;
     -a|--authprotocol)
       if [ -n "$2" ]; then
-        strAuthprotocol="$2"
+        strAuthprotocol="${2,,}"
         case "$strAuthprotocol" in
-          MD5|SHA)
+          md5|sha)
             ;;
           *)
             echo "ERROR: wrong authentication protocol" >&2
@@ -174,9 +174,9 @@ while true; do
       ;;
     -x|--privprotocol)
       if [ -n "$2" ]; then
-        strPrivprotocol="$2"
+        strPrivprotocol="${2,,}"
         case "$strPrivprotocol" in
-          DES|AES)
+          des|aes)
             ;;
           *)
             echo "ERROR: wrong privacy protocol" >&2
