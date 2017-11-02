@@ -28,14 +28,28 @@ usage() {
   echo
   echo "Usage: ${0##*/} [-V protocol] -H <hostname> -C <community> -p <part> -w <warning> -c <critical>"
   echo
-  echo "Where: -V                 - SNMP protocol version to use (1, 2c, 3); default: 2c"
-  echo "       -H|--hostname      - hostname or IP"
-  echo "       -C|--community     - SNMP community name"
-  echo "       -p|--part          - part to check"
-  echo "       -h                 - no human-readable output; do not use unit suffixes"
-  echo "       -w|--warning       - warning"
-  echo "       -c|--critical      - critical"
-  echo "       --help             - show this help"
+  echo "Where: -V                    - SNMP protocol version to use (1, 2c, 3); default: 2c"
+  echo "       -p|--part             - part to check"
+  echo "       -h                    - no human-readable output; do not use unit suffixes"
+  echo "       -w|--warning          - warning"
+  echo "       -c|--critical         - critical"
+  echo "       --help                - show this help"
+  echo
+  echo "SNMP specific"
+  echo "       -H|--hostname         - hostname or IP"
+  echo "       -V                    - SNMP protocol version to use (1, 2c, 3); default: 2c"
+  echo "       -P|--port             - SNMP port; default: 161"
+  echo
+  echo "SNMP Version 1|2c specific"
+  echo "       -C|--community        - SNMP community name; default: public"
+  echo
+  echo "SNMP Version 3 specific"
+  echo "       -l|--level            - security level (noAuthNoPriv|authNoPriv|authPriv)"
+  echo "       -u|--user             - security name"
+  echo "       -a|--authprotocol     - authentication protocol (MD5|SHA)"
+  echo "       -A|--authpassphrase   - authentication protocol pass phrase"
+  echo "       -x|--privprotocol     - privacy protocol (DES|AES)"
+  echo "       -X|--privpassphrase   - privacy protocol pass phrase"
   echo
   echo "Parts are: status, sysinfo, systemuptime, temp, cpu, cputemp, freeram, powerstatus, fans, diskused, hdstatus, hd#status, hd#temp, volstatus (Raid Volume Status), vol#status"
   echo
@@ -53,17 +67,17 @@ usage() {
   exit 3
 }
 
-protocol="2c"
-secstropt="-c"
+strProtocol="2c"
+strCommunity="public"
 
-PARSED_OPTIONS=$(getopt -n "$0" -o V:H:C:p:hw:c: --long "hostname:,community:,part:,warning:,critical:,help" -- "$@")
+PARSED_OPTIONS=$(getopt -n "$0" -o V:H:C:p:hw:c:l:u:a:A:x:X:P: --long "hostname:,community:,part:,warning:,critical:,level:,user:,authprotocol:,authpassphrase:,privprotocol:,privpassphrase:,port:,help" -- "$@")
 if [ $? -ne 0 ]; then
   exit 1
 fi
 
-if [ -n $1 ]; then
-  usage
-fi
+#if [ -n $1 ]; then
+#  usage
+#fi
 
 eval set -- "$PARSED_OPTIONS"
 
@@ -77,6 +91,10 @@ while true; do
       strCommunity="$2"
       shift 2
       ;;
+    -P|--port)
+      strPort="$2"
+      shift 2
+      ;;
     -h)
       inhuman=1
       shift
@@ -86,18 +104,14 @@ while true; do
       shift 2
       ;;
     -p|--part)
-      strpart="$2"
+      strPart="$2"
       shift 2
       ;;
     -V)
       if [ -n "$2" ]; then
-        protocol="$2"
-        case "$protocol" in
-          3)
-            secstropt="-u"
-            ;;
-          2c|1)
-            secstropt="-c"
+        strProtocol="$2"
+        case "$strProtocol" in
+          1|2c|3)
             ;;
           *)
             echo "ERROR: wrong protocol version" >&2
@@ -115,6 +129,72 @@ while true; do
       strCritical="$2"
       shift 2
       ;;
+    -l|--level)
+      if [ -n "$2" ]; then
+        strLevel="$2"
+        case "$strLevel" in
+          noAuthNoPriv|authNoPriv|authPriv)
+            ;;
+          *)
+            echo "ERROR: wrong security level" >&2
+            exit 3
+            ;;
+        esac
+      fi
+      shift 2
+      ;;
+    -u|--user)
+      if [ -n "$2" ]; then
+        strUser="$2"
+      fi
+      shift 2
+      ;;
+    -a|--authprotocol)
+      if [ -n "$2" ]; then
+        strAuthprotocol="$2"
+        case "$strAuthprotocol" in
+          MD5|SHA)
+            ;;
+          *)
+            echo "ERROR: wrong authentication protocol" >&2
+            exit 3
+            ;;
+        esac
+      fi
+      shift 2
+      ;;
+    -A|--authpassphrase)
+      if [ -n "$2" ]; then
+        strAuthpassphrase="$2"
+      else
+        echo "ERROR: authentification passphrase is missing" >&2
+        exit 3
+      fi
+      shift 2
+      ;;
+    -x|--privprotocol)
+      if [ -n "$2" ]; then
+        strPrivprotocol="$2"
+        case "$strPrivprotocol" in
+          DES|AES)
+            ;;
+          *)
+            echo "ERROR: wrong privacy protocol" >&2
+            exit 3
+            ;;
+        esac
+      fi
+      shift 2
+      ;;
+    -X|--privpassphrase)
+      if [ -n "$2" ]; then
+        strPrivpassphrase="$2"
+      else
+        echo "ERROR: privacy passphrase is missing" >&2
+        exit 3
+      fi
+      shift 2
+      ;;
     --)
       shift
       break
@@ -122,16 +202,29 @@ while true; do
   esac
 done
 
+function _cmdparam() {
+  case "$strProtocol" in
+    1|2c)
+      cmd="-v $strProtocol -c $strCommunity"
+      ;;
+    3)
+      cmd="-v $strProtocol -u $strUser -l $strLevel -a $strAuthprotocol -A $strAuthpassphrase -x $strPrivprotocol -X $strPrivpassphrase"
+      ;;
+  esac
+
+  echo "$cmd"
+}
+
 function _snmpget() {
-  snmpget -v $protocol $secstropt "$strCommunity" "$strHostname" "$@"
+  snmpget $(_cmdparam) "$strHostname" "$@"
 }
 
 function _snmpgetval() {
-  snmpget -v $protocol $secstropt "$strCommunity" -Oqv "$strHostname" "$@"
+  snmpget $(_cmdparam) -Oqv "$strHostname" "$@"
 }
 
 function _snmpstatus() {
-  snmpstatus -v $protocol $secstropt "$strCommunity" "$strHostname" "$@"
+  snmpstatus $(_cmdparam) "$strHostname" "$@"
 }
 
 function _get_exp() {
@@ -154,11 +247,11 @@ if [ "$TEST" == "Timeout: No Response from $strHostname" ]; then
 fi
 
 # STATUS ---------------------------------------------------------------------------------------------------------------------------------------
-if [ "$strpart" == "status" ]; then
+if [ "$strPart" == "status" ]; then
   echo "$TEST";
 
 # DISKUSED ---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "diskused" ]; then
+elif [ "$strPart" == "diskused" ]; then
   diskStr="$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.4.1)"
   freeStr="$(_snmpget 1.3.6.1.4.1.24681.1.2.17.1.5.1)"
 
@@ -207,7 +300,7 @@ elif [ "$strpart" == "diskused" ]; then
   fi
 
 # CPU ----------------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "cpu" ]; then
+elif [ "$strPart" == "cpu" ]; then
   CPU="$(_snmpgetval 1.3.6.1.4.1.24681.1.2.1.0 | sed -E 's/"([0-9.]+) ?%"/\1/')"
 
   OUTPUT="CPU Load=$CPU%|CPU load=$CPU%;$strWarning;$strCritical;0;100"
@@ -224,7 +317,7 @@ elif [ "$strpart" == "cpu" ]; then
   fi
 
 # CPUTEMP ----------------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "cputemp" ]; then
+elif [ "$strPart" == "cputemp" ]; then
   TEMP0="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.5.0 | sed -E 's/"([0-9.]+) ?C.*/\1/')"
   OUTPUT="CPU Temperature=${TEMP0}C|NAS CPUtemperature=${TEMP0}C;$strWarning;$strCritical;0;90"
 
@@ -245,7 +338,7 @@ elif [ "$strpart" == "cputemp" ]; then
   fi
 
 # Free RAM---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "freeram" ]; then
+elif [ "$strPart" == "freeram" ]; then
   totalMemStr="$(_snmpgetval 1.3.6.1.4.1.24681.1.2.2.0)"
   freeMemStr="$(_snmpgetval 1.3.6.1.4.1.24681.1.2.3.0)"
 
@@ -291,7 +384,7 @@ elif [ "$strpart" == "freeram" ]; then
   fi
 
 # System Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "temp" ]; then
+elif [ "$strPart" == "temp" ]; then
   TEMP0="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.6.0 | sed -E 's/"([0-9.]+) ?C.*/\1/')"
   OUTPUT="Temperature=${TEMP0}C|NAS temperature=${TEMP0}C;$strWarning;$strCritical;0;80"
 
@@ -312,8 +405,8 @@ elif [ "$strpart" == "temp" ]; then
   fi
 
 # HD# Temperature---------------------------------------------------------------------------------------------------------------------------------------
-elif [[ "$strpart" == hd?temp ]]; then
-  hdnum="$(echo "$strpart" | sed -E 's/hd([0-9]+)temp/\1/')"
+elif [[ "$strPart" == hd?temp ]]; then
+  hdnum="$(echo "$strPart" | sed -E 's/hd([0-9]+)temp/\1/')"
   TEMPHD="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.11.1.3.$hdnum" | sed -E 's/"([0-9.]+) ?C.*/\1/')"
   OUTPUT="Temperature=${TEMPHD}C|HDD$hdnum temperature=${TEMPHD}C;$strWarning;$strCritical;0;60"
 
@@ -338,8 +431,8 @@ elif [[ "$strpart" == hd?temp ]]; then
   fi
 
 # Volume # Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [[ "$strpart" == vol?status ]]; then
-  volnum="$(echo "$strpart" | sed -E 's/vol([0-9]+)status/\1/')"
+elif [[ "$strPart" == vol?status ]]; then
+  volnum="$(echo "$strPart" | sed -E 's/vol([0-9]+)status/\1/')"
   Vol_Status="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.17.1.6.$volnum" | sed 's/^"\(.*\).$/\1/')"
 
   if [[ "$Vol_Status" == 'No Such Instance'* ]]; then
@@ -357,8 +450,8 @@ elif [[ "$strpart" == vol?status ]]; then
   fi
 
 # HD# Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [[ "$strpart" == hd?status ]]; then
-  hdnum="$(echo "$strpart" | sed -E 's/hd([0-9]+)status/\1/')"
+elif [[ "$strPart" == hd?status ]]; then
+  hdnum="$(echo "$strPart" | sed -E 's/hd([0-9]+)status/\1/')"
   HDstat="$(_snmpgetval "1.3.6.1.4.1.24681.1.2.11.1.7.$hdnum" | sed 's/^"\(.*\).$/\1/')"
 
   if [[ "$HDstat" == 'No Such Instance'* ]]; then
@@ -373,7 +466,7 @@ elif [[ "$strpart" == hd?status ]]; then
   fi
 
 # HD Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "hdstatus" ]; then
+elif [ "$strPart" == "hdstatus" ]; then
   hdnum="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.10.0)"
   hdok=0
   hdnop=0
@@ -402,7 +495,7 @@ elif [ "$strpart" == "hdstatus" ]; then
   fi
 
 # Volume Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "volstatus" ]; then
+elif [ "$strPart" == "volstatus" ]; then
   ALLOUTPUT=""
   PERFOUTPUT=""
   WARNING=0
@@ -492,7 +585,7 @@ elif [ "$strpart" == "volstatus" ]; then
   fi
 
 # Power Supply Status  ----------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "powerstatus" ]; then
+elif [ "$strPart" == "powerstatus" ]; then
   ALLOUTPUT=""
   WARNING=0
   CRITICAL=0
@@ -530,7 +623,7 @@ elif [ "$strpart" == "powerstatus" ]; then
   fi
 
 # Fan Status----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "fans" ]; then
+elif [ "$strPart" == "fans" ]; then
   ALLOUTPUT=""
   PERFOUTPUT=""
   WARNING=0
@@ -582,7 +675,7 @@ elif [ "$strpart" == "fans" ]; then
   fi
 
 # System Uptime----------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "systemuptime" ]; then
+elif [ "$strPart" == "systemuptime" ]; then
   netuptime="$(_snmpget .1.3.6.1.2.1.1.3.0 | awk '{print $5, $6, $7, $8}')"
   sysuptime="$(_snmpget .1.3.6.1.2.1.25.1.1.0 | awk '{print $5, $6, $7, $8}')"
 
@@ -590,7 +683,7 @@ elif [ "$strpart" == "systemuptime" ]; then
   exit 0
 
 # System Info------------------------------------------------------------------------------------------------------------------------------------------
-elif [ "$strpart" == "sysinfo" ]; then
+elif [ "$strPart" == "sysinfo" ]; then
   model="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.12.0 | sed 's/^"\(.*\).$/\1/')"
   hdnum="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.10.0)"
   VOLCOUNT="$(_snmpgetval .1.3.6.1.4.1.24681.1.2.16.0)"
@@ -602,6 +695,6 @@ elif [ "$strpart" == "sysinfo" ]; then
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------
 else
-  echo -e "\nUnknown Part!" && exit 3
+  echo "Unknown Part!" && exit 3
 fi
 exit 0
