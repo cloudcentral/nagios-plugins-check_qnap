@@ -28,8 +28,7 @@ usage() {
   echo
   echo "Usage: ${0##*/} [-V protocol] -H <hostname> -C <community> -p <part> -w <warning> -c <critical>"
   echo
-  echo "Where: -V                    - SNMP protocol version to use (1, 2c, 3); default: 2c"
-  echo "       -p|--part             - part to check"
+  echo "Where: -p|--part             - part to check"
   echo "       -h                    - no human-readable output; do not use unit suffixes"
   echo "       -w|--warning          - warning"
   echo "       -c|--critical         - critical"
