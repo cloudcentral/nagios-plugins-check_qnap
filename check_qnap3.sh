@@ -68,6 +68,7 @@ usage() {
 
 strProtocol="2c"
 strCommunity="public"
+strPort="161"
 
 PARSED_OPTIONS=$(getopt -n "$0" -o V:H:C:p:hw:c:l:u:a:A:x:X:P: --long "hostname:,community:,part:,warning:,critical:,level:,user:,authprotocol:,authpassphrase:,privprotocol:,privpassphrase:,port:,help" -- "$@")
 if [ $? -ne 0 ]; then
