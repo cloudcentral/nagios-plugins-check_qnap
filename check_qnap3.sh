@@ -29,7 +29,7 @@ usage() {
   echo "Usage: ${0##*/} [-V protocol] <hostname> <community> <part> <warning> <critical>"
   echo
   echo "Where: -V - SNMP protocol version to use (1, 2c, 3); default: 2c"
-  echo "       -H - no human-readable output; do not use unit suffixes"
+  echo "       -h - no human-readable output; do not use unit suffixes"
   echo
   echo "Parts are: status, sysinfo, systemuptime, temp, cpu, cputemp, freeram, powerstatus, fans, diskused, hdstatus, hd#status, hd#temp, volstatus (Raid Volume Status), vol#status"
   echo
@@ -50,13 +50,13 @@ usage() {
 protocol="2c"
 secstropt="-c"
 
-while getopts 'HV:?' opt
+while getopts 'hV:?' opt
 do
   case "$opt" in
     \?)
       usage
       ;;
-    H)
+    h)
       inhuman=1
       ;;
     V)
