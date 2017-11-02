@@ -46,5 +46,6 @@ This script was tested with:
 - QNAP Model TS-EC1280U, Firmware 4.2.2 (Thanks to AndresCidoncha)
 - QNAP Model TS-459 Pro+, Firmware 4.2.6, Max HD number 4, No. Volume 1
 - QNAP Model TS-1263U-RP, Firmware 4.3.3, Max HD number 12, No. Volume 1
+- QNAP Model TS-253A, Firmware 4.3.3, Max HD number 2, No. Volume 1
 
 Nicola
