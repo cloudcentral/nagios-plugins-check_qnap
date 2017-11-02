@@ -3,6 +3,7 @@
 ############################# Created and written by Matthias Luettermann ###############
 ############################# finetuning by primator@gmail.com
 ############################# finetuning by n.bandini@gmail.com
+############################# finetuning by vitamin.b@mailbox.org
 ############################# with code by Tom Lesniak and Hugo Geijteman
 #
 # copyright (c) 2008 Shahid Iqbal
