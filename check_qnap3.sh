@@ -18,7 +18,7 @@
 # contact the author directly for more information at: matthias@xcontrol.de
 ##########################################################################################
 #Version 1.23
-plgVer=1.23
+plgVer=1.24
 
 usage() {
   echo
@@ -26,10 +26,16 @@ usage() {
   echo
   echo "Warning: Wrong command line arguments."
   echo
-  echo "Usage: ${0##*/} [-V protocol] <hostname> <community> <part> <warning> <critical>"
+  echo "Usage: ${0##*/} [-V protocol] -H <hostname> -C <community> -p <part> -w <warning> -c <critical>"
   echo
-  echo "Where: -V - SNMP protocol version to use (1, 2c, 3); default: 2c"
-  echo "       -H - no human-readable output; do not use unit suffixes"
+  echo "Where: -V                 - SNMP protocol version to use (1, 2c, 3); default: 2c"
+  echo "       -H|--hostname      - hostname or IP"
+  echo "       -C|--community     - SNMP community name"
+  echo "       -p|--part          - part to check"
+  echo "       -h                 - no human-readable output; do not use unit suffixes"
+  echo "       -w|--warning       - warning"
+  echo "       -c|--critical      - critical"
+  echo "       --help             - show this help"
   echo
   echo "Parts are: status, sysinfo, systemuptime, temp, cpu, cputemp, freeram, powerstatus, fans, diskused, hdstatus, hd#status, hd#temp, volstatus (Raid Volume Status), vol#status"
   echo
@@ -50,42 +56,71 @@ usage() {
 protocol="2c"
 secstropt="-c"
 
-while getopts 'HV:?' opt
-do
-  case "$opt" in
-    \?)
+PARSED_OPTIONS=$(getopt -n "$0" -o V:H:C:p:hw:c: --long "hostname:,community:,part:,warning:,critical:,help" -- "$@")
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
+if [ -n $1 ]; then
+  usage
+fi
+
+eval set -- "$PARSED_OPTIONS"
+
+while true; do
+  case "$1" in
+    --help)
       usage
+      shift
       ;;
-    H)
+    -C|--community)
+      strCommunity="$2"
+      shift 2
+      ;;
+    -h)
       inhuman=1
+      shift
       ;;
-    V)
-      protocol="$OPTARG"
-      case "$protocol" in
-        3)
-          secstropt="-u"
-          ;;
-        2c|1)
-          secstropt="-c"
-          ;;
-        *)
-          echo "ERROR: wrong protocol version" >&2
-          exit 3
-          ;;
-      esac
+    -H|--hostname)
+      strHostname="$2"
+      shift 2
+      ;;
+    -p|--part)
+      strpart="$2"
+      shift 2
+      ;;
+    -V)
+      if [ -n "$2" ]; then
+        protocol="$2"
+        case "$protocol" in
+          3)
+            secstropt="-u"
+            ;;
+          2c|1)
+            secstropt="-c"
+            ;;
+          *)
+            echo "ERROR: wrong protocol version" >&2
+            exit 3
+            ;;
+        esac
+      fi
+      shift 2
+      ;;
+    -w|--warning)
+      strWarning="$2"
+      shift 2
+      ;;
+    -c|--critical)
+      strCritical="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
       ;;
   esac
 done
-
-shift $(($OPTIND-1))
-
-[ $# -ne 5 ] && usage
-
-strHostname="$1"
-strCommunity="$2"
-strpart="$3"
-strWarning="$4"
-strCritical="$5"
 
 function _snmpget() {
   snmpget -v $protocol $secstropt "$strCommunity" "$strHostname" "$@"
