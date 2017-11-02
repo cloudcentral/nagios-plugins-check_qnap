@@ -211,19 +211,25 @@ function _cmdparam() {
       ;;
   esac
 
+  if [ -n "$strPort" ]; then
+    cmd="$cmd $strHostname:$strPort"
+  else
+    cmd="$cmd $strHostname"
+  fi
+
   echo "$cmd"
 }
 
 function _snmpget() {
-  snmpget $(_cmdparam) "$strHostname" "$@"
+  snmpget $(_cmdparam) "$@"
 }
 
 function _snmpgetval() {
-  snmpget $(_cmdparam) -Oqv "$strHostname" "$@"
+  snmpget $(_cmdparam) -Oqv "$@"
 }
 
 function _snmpstatus() {
-  snmpstatus $(_cmdparam) "$strHostname" "$@"
+  snmpstatus $(_cmdparam) "$@"
 }
 
 function _get_exp() {
